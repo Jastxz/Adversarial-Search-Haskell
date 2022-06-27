@@ -1,4 +1,6 @@
 module Main where
 
+import Interaction
+
 main :: IO ()
-main = putStrLn "Hello, Haskell!"
+main = mainInteraction
