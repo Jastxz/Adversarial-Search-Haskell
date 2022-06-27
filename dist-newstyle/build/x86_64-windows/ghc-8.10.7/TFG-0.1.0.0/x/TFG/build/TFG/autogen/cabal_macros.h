@@ -10,6 +10,16 @@
   (major1) == 0 && (major2) <  1 || \
   (major1) == 0 && (major2) == 1 && (minor) <= 0)
 #endif /* MIN_VERSION_TFG */
+/* package TFG-0.1.0.0 */
+#ifndef VERSION_TFG
+#define VERSION_TFG "0.1.0.0"
+#endif /* VERSION_TFG */
+#ifndef MIN_VERSION_TFG
+#define MIN_VERSION_TFG(major1,major2,minor) (\
+  (major1) <  0 || \
+  (major1) == 0 && (major2) <  1 || \
+  (major1) == 0 && (major2) == 1 && (minor) <= 0)
+#endif /* MIN_VERSION_TFG */
 /* package base-4.14.3.0 */
 #ifndef VERSION_base
 #define VERSION_base "4.14.3.0"

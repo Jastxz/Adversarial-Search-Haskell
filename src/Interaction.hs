@@ -1,4 +1,4 @@
-module Interaction(
+module Interaction (
         mainInteraction
     ) where
 

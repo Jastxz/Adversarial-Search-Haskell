@@ -51,7 +51,7 @@ library
     exposed-modules:  Interaction
 
     -- Modules included in this library but not exported.
-    -- other-modules:
+    --other-modules:  
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
@@ -76,7 +76,7 @@ executable TFG
     -- other-extensions:
 
     -- Other library packages from which modules are imported.
-    build-depends:    base ^>=4.14.3.0
+    build-depends:    base ^>=4.14.3.0, TFG
 
     -- Directories containing source files.
     hs-source-dirs:   app
