@@ -2,5 +2,7 @@ module Interaction (
         mainInteraction
     ) where
 
+import IO3enRaya
+
 mainInteraction :: IO ()
-mainInteraction =  putStrLn "Hello, Haskell!"
+mainInteraction =  interactua3enRaya
