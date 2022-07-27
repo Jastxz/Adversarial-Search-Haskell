@@ -51,7 +51,10 @@ library
     exposed-modules:  Interaction
 
     -- Modules included in this library but not exported.
-    other-modules:  Utiles, IO3enRaya, Funciones3enRaya
+    other-modules:  
+        Tipos, Utiles, 
+        IO3enRaya, Funciones3enRaya,
+        MiniMax
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
