@@ -30,8 +30,8 @@ partidaNueva = do
         else do
             inicializaProfundidadSegunDificultad dif
 
-juegoMedio :: Tablero -> Int -> Int -> Int -> IO()
-juegoMedio t j dif prof = do
+juegoMedio :: Movimiento -> Int -> Int -> Int -> IO()
+juegoMedio m@(t,_) j dif prof = do
     putStrLn "Estado del juego:\n"
     representaTablero t
     let rangosT = rangos t
@@ -45,28 +45,28 @@ juegoMedio t j dif prof = do
             nuevaLinea
             (fil,col) <- revisaIn (menor,mayor)
             tn <- jugada t (fil,col) "X"
-            gestionaTurno tn j dif prof
+            gestionaTurno (tn,(fil,col)) j dif prof
         else do
             putStrLn "-Le toca a la máquina"
-            tn <- trataDificultad t dif prof
-            gestionaTurno tn j dif prof
+            mn <- trataDificultad m dif prof
+            gestionaTurno mn j dif prof
 
-gestionaTurno :: Tablero -> Int -> Int -> Int -> IO()
-gestionaTurno t j dif prof = do
+gestionaTurno :: Movimiento -> Int -> Int -> Int -> IO()
+gestionaTurno m@(t,pos) j dif prof = do
     if finalizado t
-        then if hay3EnRaya t
-            then do
-                representaTablero t
-                if j == 1
-                    then putStrLn "¡Has ganado!"
-                    else putStrLn "La máquina gana..."
-            else putStrLn "Empate..."
-        else do
-            let jn = siguiente j
+        then do
             representaTablero t
-            juegoMedio t jn dif prof
+            if hay3EnRaya t
+                then
+                    if j == 1
+                        then putStrLn "¡Has ganado!"
+                        else putStrLn "La máquina gana..."
+                else putStrLn "Empate..."
+            else do
+                let jn = siguiente j
+                juegoMedio m jn dif prof
 
-jugada :: Tablero -> (Int,Int) -> String -> IO Tablero
+jugada :: Tablero -> Pos -> String -> IO Tablero
 jugada t (i,j) v
     | valido (i,j) t = do
         let tn = setElem v (i,j) t
@@ -89,42 +89,38 @@ Funciones de utilidad para el resto del documento
 inicializaProfundidadSegunDificultad :: Int -> IO()
 inicializaProfundidadSegunDificultad dif
     | dif == 0 = juegoMedio inicial 1 dif 0
-    | dif == 1 = juegoMedio inicial 1 dif 1
-    | dif == 2 = juegoMedio inicial 1 dif 5
-    | otherwise = juegoMedio inicial 1 dif 7
+    | dif == 1 = juegoMedio inicial 1 dif 9
+    | dif == 2 = juegoMedio inicial 1 dif 9
+    | otherwise = juegoMedio inicial 1 dif 9
 
-trataDificultad :: Tablero -> Int -> Int -> IO Tablero
-trataDificultad t dif prof
+trataDificultad :: Movimiento -> Int -> Int -> IO Movimiento
+trataDificultad m@(t,pos) dif prof
     | dif == 0 = ponAleatorio t
-    | otherwise = usaNegamax t dif prof "3enRaya"
+    | otherwise = usaNegamax m dif prof "3enRaya"
 
-ponAleatorio :: Tablero -> IO Tablero
+ponAleatorio :: Tablero -> IO Movimiento
 ponAleatorio t = do
     al <- now
     let a = mod al limiteValidos
     let pos = listaVacios !! a
     let nuevoT = setElem "O" pos t
-    return nuevoT
+    return (nuevoT,pos)
         where
             listaVacios = casillasVacias t
             limiteValidos = length listaVacios
 
-usaNegamax :: Tablero -> Int -> Int -> String -> IO Tablero
-usaNegamax t dif prof juego = do
-    puntuaciones <- sacaPuntuacionesDeIO puntuacionesIO
-    let tablerosPuntuados = [tp | tp<-zip movimientos puntuaciones]
-    let tablerosOrdenados = sortOn snd tablerosPuntuados
-    let mejorTablero = last tablerosOrdenados
-    return $ fst mejorTablero 
-    where
-        puntuacionesIO = map (\tn -> negamax tn dif prof juego) movimientos
-        movimientos = map (\pos -> setElem "O" pos t) listaVacias
-        listaVacias = casillasVacias t
+usaNegamax :: Movimiento -> Int -> Int -> String -> IO Movimiento
+usaNegamax m dif prof juego = do
+    mejorTablero <- negamax m dif prof juego
+    let mejorMovimiento = (fst mejorTablero, snd m)
+    putStrLn "Mejor puntuación para la máquina en el tablero dado"
+    print mejorMovimiento
+    return mejorMovimiento
 
 representaMovimientos :: Movimientos -> IO()
 representaMovimientos [] = do putStrLn "Fin de la representación de tableros."
 representaMovimientos (t:ts) = do
-    representaTablero t
+    representaTablero $ fst t
     representaMovimientos ts
 
 representaTablero :: Tablero -> IO()
@@ -133,7 +129,7 @@ representaTablero t = do
     let tablero = escribeTablero fs
     putStrLn $ "\n" ++ tablero ++ "\n"
 
-revisaIn :: (Int,Int) -> IO (Int,Int)
+revisaIn :: Pos -> IO Pos
 revisaIn (i,j) = do
     f <- leeDigito "-Primero indica la fila: "
     c <- leeDigito "-Ahora indica la columna: "

@@ -5,6 +5,7 @@ module Utiles (
         columnasMatriz,
         diagonalesMatriz,
         valido,
+        dentroDelTablero,
         casillasVacias,
         movimientosPosibles,
         esEstadoFinal,
@@ -49,12 +50,17 @@ diagonalPMatriz n m = [m ! (x,x) | x<-[1..n]]
 diagonalSMatriz :: Int -> Matrix a -> [a]
 diagonalSMatriz n m = [m ! (x,n-x+1) | x<-[1..n]]
 
-valido :: (Int,Int) -> Tablero -> Bool
+valido :: Pos -> Tablero -> Bool
 valido (i,j) m = (v==" ") && (i>=rmin && i<=rmax) && (j>=rmin && j<=rmax)
     where v = m ! (i,j)
           (rmin,rmax) = rangos m
 
-casillasVacias :: Tablero -> [(Int,Int)]
+dentroDelTablero :: Pos -> Tablero -> Bool
+dentroDelTablero (i,j) m = (i>=rmin && i<=rmax) && (j>=rmin && j<=rmax)
+    where v = m ! (i,j)
+          (rmin,rmax) = rangos m
+
+casillasVacias :: Tablero -> [Pos]
 casillasVacias m = filter (\ c -> (m ! c) == " ") casillas
     where
         (min,max) = rangos m
@@ -70,9 +76,9 @@ esEstadoFinal t juego
     | juego == "3enRaya" = fin3enRaya t
     | otherwise = otros
 
-puntuaEstado :: Tablero -> String -> Double
-puntuaEstado t juego
-    | juego == "3enRaya" = puntua3enRaya t
+puntuaEstado :: Tablero -> Pos -> String -> Double
+puntuaEstado t pos juego
+    | juego == "3enRaya" = puntua3enRaya t pos
     | otherwise = otros
 
 otros = undefined
@@ -126,16 +132,19 @@ Funciones privadas del módulo que son auxiliares de otras.
 
 movs3enRaya :: Tablero -> Int -> Movimientos
 movs3enRaya t quienJuega
-    | quienJuega == 1 = map (\pos -> setElem "X" pos t) listaVacias
-    | otherwise = map (\pos -> setElem "O" pos t) listaVacias
+    | quienJuega == 1 = map (\pos -> (setElem "X" pos t, pos)) listaVacias
+    | otherwise = map (\pos -> (setElem "O" pos t, pos)) listaVacias
         where
             listaVacias = casillasVacias t
 
 fin3enRaya :: Tablero -> Bool
 fin3enRaya t = lleno t || hay3EnRaya t
 
-puntua3enRaya :: Tablero -> Double
-puntua3enRaya t = if hay3EnRaya t then 1.0 else 0.0
+puntua3enRaya :: Tablero -> Pos -> Double
+puntua3enRaya t pos
+    | hay3EnRaya t = 2.0
+    | hay2EnRaya t pos = 1.0
+    | otherwise = 0.0
 
 {- +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 Funciones privadas del módulo que son auxiliares de las auxiliares y, 
@@ -146,17 +155,20 @@ lleno :: Tablero -> Bool
 lleno t = null (casillasVacias t)
 
 hay3EnRaya :: Tablero -> Bool
-hay3EnRaya t = or [x==3 | x<-lss]
-    where fs = toLists t
-          cs = columnasMatriz t
-          ds = diagonalesMatriz t
-          tripleX = ["X","X","X"]
-          tripleO = ["O","O","O"]
-          fsx = [x | x<-fs,x==tripleX]
-          csx = [x | x<-cs,x==tripleX]
-          dsx = [x | x<-ds,x==tripleX]
-          fso = [x | x<-fs,x==tripleO]
-          cso = [x | x<-cs,x==tripleO]
-          dso = [x | x<-ds,x==tripleO]
-          ess = fsx++csx++dsx++fso++cso++dso
-          lss = [length x | x<-ess]
+hay3EnRaya t = not (null fsx) || not (null csx) || not (null dsx)
+    where 
+        fs = toLists t
+        cs = columnasMatriz t
+        ds = diagonalesMatriz t
+        tripleX = ["X","X","X"]
+        tripleO = ["O","O","O"]
+        fsx = filter (\f -> f == tripleX || f == tripleO) fs
+        csx = filter (\c -> c == tripleX || c == tripleO) cs
+        dsx = filter (\d -> d == tripleX || d == tripleO) ds
+
+hay2EnRaya :: Tablero -> Pos -> Bool
+hay2EnRaya t pos@(f,c) = or [marca == m | m<-marcasAlrededores]
+    where
+        alrededores = [a | a<-zip [f-1..f+1] [c-1..c+1], dentroDelTablero a t && a /= pos]
+        marca = getElem f c t
+        marcasAlrededores = map (\(i,j) -> getElem i j t) alrededores

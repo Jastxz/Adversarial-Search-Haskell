@@ -4,59 +4,71 @@ module MiniMax (
 
 import Tipos
 import Utiles
+import Data.List (sortOn)
 
 {- +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 Negamax básico
 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ -}
-negamax :: Tablero -> Int -> Int -> String -> IO Double
-negamax estado dificultad profundidad juego
-    | dificultad == 2 = negamaxConPoda estado profundidad juego puntuacion (1/0)
-    | dificultad >= 3 = negamaxCompleto estado profundidad juego puntuacion (1/0)
+negamax :: Movimiento -> Int -> Int -> String -> IO TableroPuntuado
+negamax mov dificultad profundidad juego
+    | dificultad == 2 = negamaxConPoda mov profundidad juego puntuacion (1/0)
+    | dificultad >= 3 = negamaxCompleto mov profundidad juego puntuacion (1/0)
     | otherwise = do
-        iteraNegamax estado profundidad juego puntuacion 1
+        iteraNegamax mov profundidad juego puntuacion 2
         where
             puntuacion = (-1)/0
 
-iteraNegamax :: Tablero -> Int -> String -> Double -> Int -> IO Double
-iteraNegamax estado profundidad juego referencia quienJuega = do
+iteraNegamax :: Movimiento -> Int -> String -> Double -> Int -> IO TableroPuntuado
+iteraNegamax (estado, pos) profundidad juego referencia quienJuega = do
     let esFinal = esEstadoFinal estado juego
-    let puntuacion = puntuaEstado estado juego
+    let puntuacion = puntuaEstado estado pos juego
     let movsPosibles = movimientosPosibles estado juego quienJuega
     let mejorReferencia | referencia > puntuacion = referencia | otherwise = puntuacion
     if esFinal
         then
-            return mejorReferencia
+            return (estado,mejorReferencia)
         else do
             if profundidad <= 0
                 then do
-                    return mejorReferencia
+                    return (estado,mejorReferencia)
                 else do
                     let sig = siguiente quienJuega
-                    iteraciones <- realizaIteraciones movsPosibles (profundidad - 1) juego puntuacion sig
-                    putStrLn "Movimientos posibles"
-                    print movsPosibles
-                    putStrLn "Resultados iteraciones"
-                    print iteraciones
-                    let mejor = maximum iteraciones
+                    iteraciones <- realizaIteraciones movsPosibles (profundidad - 1) juego mejorReferencia sig
+                    let puntuaciones = map snd iteraciones
+                    let movs = map fst movsPosibles
+                    let tablerosPuntuados = zip movs puntuaciones
+                    let mejor = head $ sortOn snd tablerosPuntuados
+                    {- putStrLn "================================================================"
+                    putStrLn "Bloque"
+                    putStrLn "================================================================"
+                    putStrLn "Movimientos posibles con sus puntuaciones"
+                    print tablerosPuntuados
+                    putStr "Quien juega en este turno, la mejor puntuación y la profundidad:    "
+                    putStrLn $ show quienJuega ++ "......" ++ show mejor ++ "......" ++ show profundidad
+                    putStrLn "================================================================" -}
                     return mejor
 
-realizaIteraciones :: Movimientos -> Int -> String -> Double -> Int -> IO [Double]
+realizaIteraciones :: Movimientos -> Int -> String -> Double -> Int -> IO TablerosPuntuados
 realizaIteraciones [] _ _ _ _ = return []
 realizaIteraciones (m:ms) prof juego referencia quienJuega = do
-    iteracion <- iteraNegamax m prof juego referencia quienJuega
-    let valor = (-1)*iteracion
+    (iteracion,v) <- iteraNegamax m prof juego referencia quienJuega
+    let valor = (iteracion,(-1)*v)
+    {- putStr $ show iteracion
+    putStr "..."
+    putStr $ show valor
+    putStrLn " " -}
     iteraciones <- realizaIteraciones ms prof juego referencia quienJuega
     return $ valor:iteraciones
 
 {- +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 Negamax con poda
 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ -}
-negamaxConPoda :: Tablero -> Int -> String -> Double -> Double -> IO Double
+negamaxConPoda :: Movimiento -> Int -> String -> Double -> Double -> IO TableroPuntuado
 negamaxConPoda = undefined
 
 
 {- +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 Negamax completo
 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ -}
-negamaxCompleto :: Tablero -> Int -> String -> Double -> Double -> IO Double
+negamaxCompleto :: Movimiento -> Int -> String -> Double -> Double -> IO TableroPuntuado
 negamaxCompleto = undefined

@@ -13,8 +13,11 @@ import Data.Matrix
 import Tipos
 import Utiles
 
-inicial :: Tablero
-inicial = matrix 3 3 $ \(i,j) -> " "
+inicial :: Movimiento
+inicial = (t,pos)
+    where
+        t = matrix 3 3 $ \(i,j) -> " "
+        pos = (0,0)
 
 finalizado :: Tablero -> Bool
 finalizado t = lleno t || hay3EnRaya t
@@ -23,20 +26,16 @@ lleno :: Tablero -> Bool
 lleno t = null (casillasVacias t)
 
 hay3EnRaya :: Tablero -> Bool
-hay3EnRaya t = or [x==3 | x<-lss]
-    where fs = toLists t
-          cs = columnasMatriz t
-          ds = diagonalesMatriz t
-          tripleX = ["X","X","X"]
-          tripleO = ["O","O","O"]
-          fsx = [x | x<-fs,x==tripleX]
-          csx = [x | x<-cs,x==tripleX]
-          dsx = [x | x<-ds,x==tripleX]
-          fso = [x | x<-fs,x==tripleO]
-          cso = [x | x<-cs,x==tripleO]
-          dso = [x | x<-ds,x==tripleO]
-          ess = fsx++csx++dsx++fso++cso++dso
-          lss = [length x | x<-ess]
+hay3EnRaya t = not (null fsx) || not (null csx) || not (null dsx)
+    where 
+        fs = toLists t
+        cs = columnasMatriz t
+        ds = diagonalesMatriz t
+        tripleX = ["X","X","X"]
+        tripleO = ["O","O","O"]
+        fsx = filter (\f -> f == tripleX || f == tripleO) fs
+        csx = filter (\c -> c == tripleX || c == tripleO) cs
+        dsx = filter (\d -> d == tripleX || d == tripleO) ds
 
 {- +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 Funciones que tienen que ver con la escritura y lectura en consola.
