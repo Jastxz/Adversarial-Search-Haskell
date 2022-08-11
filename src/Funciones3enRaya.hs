@@ -4,7 +4,6 @@ module Funciones3enRaya (
         finalizado,
         lleno,
         hay3EnRaya,
-        siguiente,
         -- Funciones escritura
         escribeTablero,
     ) where
@@ -17,7 +16,7 @@ inicial :: Movimiento
 inicial = (t,pos)
     where
         t = matrix 3 3 $ \(i,j) -> " "
-        pos = (0,0)
+        pos = (1,1)
 
 finalizado :: Tablero -> Bool
 finalizado t = lleno t || hay3EnRaya t

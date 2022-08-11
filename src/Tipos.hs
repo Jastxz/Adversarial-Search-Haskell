@@ -1,4 +1,6 @@
 module Tipos (
+    -- Datos nuevos definidos
+    Jugador,
     -- Tipos por sinónimos
     Tablero,
     Pos,
@@ -10,6 +12,8 @@ module Tipos (
 ) where
 
 import Data.Matrix
+
+data Jugador = Humano | Maquina
 
 type Tablero = Matrix String
 type Pos = (Int,Int)
