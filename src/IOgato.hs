@@ -54,7 +54,7 @@ gestionaTurno m@(t,pos) turno dif prof marca = do
     if esEstadoFinal t "gato"
         then do
             print t
-            if ratonEncerrado t && marca == "G"
+            if (ratonEncerrado t && marca == "G") || (ratonEscapado t && marca == "R")
                 then putStrLn "¡Has ganado!"
                 else putStrLn "La máquina gana..."
         else do
@@ -102,7 +102,7 @@ falsoInicio marca
         return ini
     | otherwise = do
         let falsoInicial = inicial (6,5)
-        usaNegamax falsoInicial 1 9 "R" "gato"
+        usaNegamax falsoInicial 2 10 "R" "gato"
 
 escogeCasilla :: Tablero -> [Pos] -> String -> IO (Pos,Pos)
 escogeCasilla t casillasValidas marca = do
@@ -150,8 +150,7 @@ inicializaProfundidadSegunDificultad :: Int -> String -> Int
 inicializaProfundidadSegunDificultad dif marca
     | dif == 0 = 0
     | dif == 1 = if marca == "R" then 5 else 7
-    | dif == 2 = if marca == "R" then 5 else 7
-    | otherwise = if marca == "R" then 5 else 7
+    | otherwise = if marca == "R" then 30 else 11
 
 {- +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 Funciones de utilidad para juegoMedio

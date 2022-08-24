@@ -47,8 +47,9 @@ juegoMedio m@(t,_) turno dif prof marca = do
         else do
             putStrLn "-Le toca a la máquina"
             let marcaMaquina = marcaDeLaMaquina marca "3enRaya"
-            mn <- trataDificultad m dif prof marcaMaquina
-            gestionaTurno mn turno dif prof marca
+            let profDinamica = length $ casillasVacias t
+            mn <- trataDificultad m dif profDinamica marcaMaquina
+            gestionaTurno mn turno dif profDinamica marca
 
 gestionaTurno :: Movimiento -> Int -> Int -> Int -> String -> IO()
 gestionaTurno m@(t,pos) j dif prof marca = do
@@ -120,8 +121,6 @@ escogeMarca = do
 inicializaProfundidadSegunDificultad :: Int -> Int
 inicializaProfundidadSegunDificultad dif
     | dif == 0 = 0
-    | dif == 1 = 9
-    | dif == 2 = 9
     | otherwise = 9
 
 {- +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
