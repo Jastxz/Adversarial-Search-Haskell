@@ -74,7 +74,7 @@ casillasAlrededorFicha m (f,c) = [(i,j) | i<-[f-1,f,f+1], j<-[c-1,c,c+1], dentro
 
 movimientosPosibles :: Tablero -> Int -> String -> String -> Movimientos
 movimientosPosibles estado quienJuega marcaMaquina juego
-    | juego == "3enRaya" = movs3enRaya estado quienJuega marcaMaquina
+    | juego == "3enRaya" = movs3enRaya estado marcaMaquina
     | juego == "gato" = movsGato estado marcaMaquina
     | otherwise = otros
 
@@ -145,25 +145,22 @@ sacaPuntuacionesDeIO (p:ps) = do
 Funciones privadas del módulo que son auxiliares de otras.
 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ -}
 
-movs3enRaya :: Tablero -> Int -> String -> Movimientos
-movs3enRaya t quienJuega marcaMaquina = zip tableros listaVacias
+movs3enRaya :: Tablero -> String -> Movimientos
+movs3enRaya t marcaMaquina = zip tableros listaVacias
     where
-        marca = marcaDeLaMaquina marcaMaquina "3enRaya"
         listaVacias = casillasVacias t
-        tableros
-            | quienJuega == 1 = map (\pos -> setElem marca pos t) listaVacias
-            | otherwise = map (\pos -> setElem marcaMaquina pos t) listaVacias
+        tableros = map (\pos -> setElem marcaMaquina pos t) listaVacias
 
 fin3enRaya :: Tablero -> Bool
 fin3enRaya t = lleno t || hay3EnRaya t
 
 puntua3enRaya :: Tablero -> Pos -> Double
-puntua3enRaya t pos
-    | hay3EnRaya t = 10.0
-    | hay2 = 5.0
-    | otherwise = 0.0
-        where
-            hay2 = hay2EnRaya t pos
+-- puntua3enRaya t pos = if hay3EnRaya t then 10.0 else 0
+puntua3enRaya t pos = hay2
+    where
+        hay3 = if hay3EnRaya t then 10.0 else 0
+        corta3 = if corta3EnRaya t pos then hay3 + 7.5 else hay3
+        hay2 = if hay2EnRaya t pos then corta3 + 5.0 else corta3
 
 casillasVaciasRaton :: Tablero -> [Pos]
 casillasVaciasRaton m = filter (\ c -> (m ! c) == " ") casillasAlrededor
@@ -220,23 +217,35 @@ hay3EnRaya t = not (null fsx) || not (null csx) || not (null dsx)
         fs = toLists t
         cs = columnasMatriz t
         ds = diagonalesMatriz t
-        tripleX = ["X","X","X"]
-        tripleO = ["O","O","O"]
-        fsx = filter (\f -> f == tripleX || f == tripleO) fs
-        csx = filter (\c -> c == tripleX || c == tripleO) cs
-        dsx = filter (\d -> d == tripleX || d == tripleO) ds
+        tripleX = takeWhile (=="X")
+        tripleO = takeWhile (=="O")
+        fsx = filter (\f -> length (tripleX f) == 3 || length (tripleO f) == 3) fs
+        csx = filter (\c -> length (tripleX c) == 3 || length (tripleO c) == 3) cs
+        dsx = filter (\d -> length (tripleX d) == 3 || length (tripleO d) == 3) ds
+
+corta3EnRaya :: Tablero -> Pos -> Bool
+corta3EnRaya t pos = not (null fsx) || not (null csx) || not (null dsx)
+    where
+        fs = toLists t
+        cs = columnasMatriz t
+        ds = diagonalesMatriz t
+        marcaMaq = t ! pos
+        marcaHum = marcaDeLaMaquina marcaMaq "3enRaya"
+        fsx = filter (\f -> elem marcaMaq f && 2 == length [x | x<-f, x==marcaHum]) fs
+        csx = filter (\c -> elem marcaMaq c && 2 == length [x | x<-c, x==marcaHum]) cs
+        dsx = filter (\d -> elem marcaMaq d && 2 == length [x | x<-d, x==marcaHum]) ds
 
 hay2EnRaya :: Tablero -> Pos -> Bool
-hay2EnRaya t pos@(f,c) = or [marca == m | m<-marcasPosibles]
+hay2EnRaya t pos = not (null fsx) || not (null csx) || not (null dsx)
     where
-        listaAlrededores = casillasAlrededorFicha t pos
-        alrededores = [a | a<-listaAlrededores, a /= pos]
-        marca = getElem f c t
-        marcasAlrededores = map (\(i,j) -> getElem i j t) alrededores
-        listaLejanos = [(i,j) | i<-[f-2,f,f+2], j<-[c-2,c,c+2]]
-        lejanos = [l | l<-listaLejanos, dentroDelTablero l t && l /= pos]
-        marcasLejanas = map (\(i,j) -> getElem i j t) lejanos
-        marcasPosibles = marcasAlrededores ++ marcasLejanas
+        fs = toLists t
+        cs = columnasMatriz t
+        ds = diagonalesMatriz t
+        marcaMaq = t ! pos
+        marcaHum = marcaDeLaMaquina marcaMaq "3enRaya"
+        fsx = filter (\f -> notElem marcaHum f && 2 == length [x | x<-f, x==marcaMaq]) fs
+        csx = filter (\c -> notElem marcaHum c && 2 == length [x | x<-c, x==marcaMaq]) cs
+        dsx = filter (\d -> notElem marcaHum d && 2 == length [x | x<-d, x==marcaMaq]) ds
 
 casillasValidasGatos :: Tablero -> Pos -> [Pos]
 casillasValidasGatos m pos@(f,c) = filter (\(i,j) -> i < f) casillasAlrededor

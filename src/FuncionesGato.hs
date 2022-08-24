@@ -5,6 +5,7 @@ module FuncionesGato (
         inicial,
         casillasVaciasRaton,
         ratonEncerrado,
+        ratonEscapado,
         movsGato,
         intercambiaPieza
     ) where
@@ -55,6 +56,14 @@ casillasValidasGatos m pos@(f,c) =filter (\(i,j) -> i < f) casillasAlrededor
 
 ratonEncerrado :: Tablero -> Bool
 ratonEncerrado t = null (casillasVaciasRaton t)
+
+ratonEscapado :: Tablero -> Bool
+ratonEscapado t = filaRaton >= filaGato
+    where
+        (rmen, rmay) = rangos t
+        posiciones = [(i,j) | i<-[rmen..rmay], j<-[rmen..rmay]]
+        filaRaton = fst $ head $ filter (\p -> (t ! p) == "R") posiciones
+        filaGato = maximum $ map fst $ filter (\p -> (t ! p) == "G") posiciones
 
 movsGato :: Tablero -> String -> Movimientos
 movsGato t marca
