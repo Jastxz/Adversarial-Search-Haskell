@@ -8,12 +8,14 @@ module Utiles (
         dentroDelTablero,
         casillasVacias,
         casillasAlrededorFicha,
+        buscaPieza,
         movimientosPosibles,
         esEstadoFinal,
         puntuaEstado,
         -- Funciones Normales
         esInt,
         stringToInt,
+        listasDePares,
         siguiente,
         marcaDeLaMaquina,
         -- Funciones IO
@@ -28,6 +30,7 @@ import Data.List (nub)
 import Data.Char
 import Data.Time.Clock
 import qualified Data.Functor
+
 import Tipos
 
 {- +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -72,6 +75,11 @@ casillasVacias m = filter (\ c -> (m ! c) == " ") casillas
 casillasAlrededorFicha :: Tablero -> Pos -> [Pos]
 casillasAlrededorFicha m (f,c) = [(i,j) | i<-[f-1,f,f+1], j<-[c-1,c,c+1], dentroDelTablero (i,j) m]
 
+buscaPieza :: Tablero -> String -> Pos
+buscaPieza m pieza = head [(f,c) | f<-[min..max], c<-[min..max], (m ! (f,c)) == pieza]
+    where
+        (min,max) = rangos m
+
 movimientosPosibles :: Tablero -> Int -> String -> String -> Movimientos
 movimientosPosibles estado quienJuega marcaMaquina juego
     | juego == "3enRaya" = movs3enRaya estado marcaMaquina
@@ -103,6 +111,13 @@ stringToInt [] = 0
 stringToInt c@(s:ss)
     | s == '-' = (-1)*stringToInt ss
     | otherwise = (digitToInt s * 10^(length c - 1)) + stringToInt ss
+
+listasDePares :: [a] -> [[a]]
+listasDePares [] = []
+listasDePares lista = par : listasDePares resto
+    where
+        par = take 2 lista
+        resto = drop 2 lista
 
 siguiente :: Int -> Int
 siguiente j = if j == 1 then 2 else 1
@@ -175,7 +190,7 @@ casillasVaciasGatos m = filter (\ c -> (m ! c) == " ") casillasAlrededor
     where
         (min,max) = rangos m
         casillas = [(i,j) | i<-[min..max], j<-[min..max]]
-        casillasGatos = filter (\pos -> (m ! pos) == "G") casillas
+        casillasGatos = filter (\pos -> (m ! pos) `elem` ["G1","G3","G5","G7"]) casillas
         casillasAlrededor = concatMap (casillasValidasGatos m) casillasGatos
 
 movsGato :: Tablero -> String -> Movimientos
@@ -195,7 +210,7 @@ ratonEscapado t = filaRaton >= filaGato
         (rmen, rmay) = rangos t
         posiciones = [(i,j) | i<-[rmen..rmay], j<-[rmen..rmay]]
         filaRaton = fst $ head $ filter (\p -> (t ! p) == "R") posiciones
-        filaGato = maximum $ map fst $ filter (\p -> (t ! p) == "G") posiciones
+        filaGato = maximum $ map fst $ filter (\p -> (t ! p) `elem` ["G1","G3","G5","G7"]) posiciones
 
 puntuaGato :: Tablero -> Pos -> Double
 puntuaGato t pos
@@ -263,18 +278,18 @@ mueveRaton t pos
 mueveGato :: Tablero -> [Pos] -> Movimientos
 mueveGato _ [] = []
 mueveGato t (p:ps)
-    | length gatosAlrededor == 1 = (intercambiaPieza t "G" p (head gatosAlrededor), p) : mueveGato t ps
+    | length gatosAlrededor == 1 = (intercambiaPieza t (t ! head gatosAlrededor) p (head gatosAlrededor), p) : mueveGato t ps
     | length gatosAlrededor > 1 = intercambia2piezas t gatosAlrededor p ++ mueveGato t ps
     | otherwise = (t,p) : mueveGato t ps
         where
             validas = casillasAlrededorFicha t p
-            gatosAlrededor = filter (\v -> (t ! v) == "G") validas
+            gatosAlrededor = filter (\v -> (t ! v)`elem` ["G1","G3","G5","G7"]) validas
 
 intercambiaPieza :: Tablero -> String -> Pos -> Pos -> Tablero
 intercambiaPieza t pieza posNueva posAntigua = setElem pieza posNueva $ setElem " " posAntigua t
 
 intercambia2piezas :: Tablero -> [Pos] -> Pos -> Movimientos
-intercambia2piezas t gatosAlrededor pos = [(intercambiaPieza t "G" pos g, pos) | g<-gatosAlrededor]
+intercambia2piezas t gatosAlrededor pos = [(intercambiaPieza t (t ! g) pos g, pos) | g<-gatosAlrededor]
 
 {- hayHueco :: Tablero -> Bool
 hayHueco t  -}

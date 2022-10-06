@@ -4,6 +4,7 @@ module MiniMax
 where
 
 import Data.List
+
 import Tipos
 import Utiles
 
