@@ -65,6 +65,7 @@ manejaEntrada evento mundo
 
 actualiza :: Float -> Mundo -> IO Mundo
 actualiza _ mundo@(mov@(estado,pos),juego,dif,prof,marca,turno,seleccionado,esMaquina)
+    | esEstadoFinal estado juego = return mundo
     | clave == "menu" = return mundo
     | clave == "opciones" = return mundo
     | esMaquina = mueveMaquina mundo
@@ -80,7 +81,7 @@ pintaMenu = do
     let borde = rectangleWire 300 500
     let comienzoLista = fst ordenJuegos
     let evolucionLista = snd ordenJuegos
-    let titulos = pictures $ listaTextos listaDeJuegos 'Y' comienzoLista evolucionLista
+    let titulos = pictures $ listaTextos listaDeJuegos 'Y' comienzoLista evolucionLista True
     let res = pictures [borde,titulos]
     return res
 -- ---------------------------------------------------------------------------------
@@ -116,8 +117,8 @@ pintaOpciones juego mundo
 -- ---------------------------------------------------------------------------------
 escogeOpcion :: Point -> Mundo -> IO Mundo
 escogeOpcion raton mundo@(mov@(estado,pos),juego,dif,prof,marca,turno,seleccionado,esMaquina)
-    | juego == "3enRaya" = manejaOpciones3enRaya raton mundo
-    | juego == "gato" = manejaOpcionesGato raton mundo
+    | juego == "3enRaya" = manejaOpciones3enRaya raton (tableroVacio "opciones", "3enRaya", 0, 0, "O", 0, "", False)
+    | juego == "gato" = manejaOpcionesGato raton (tableroVacio "opciones", "gato", 0, 0, "R", 0, "", False)
     | otherwise = error $ parte1 ++ show juego ++ parte2
         where
             parte1 = "Ha ocurrido un error en la función escogeOpción. El juego "
@@ -127,7 +128,8 @@ escogeOpcion raton mundo@(mov@(estado,pos),juego,dif,prof,marca,turno,selecciona
 {- Distribuidor de gráficos de los juegos -}
 -- ---------------------------------------------------------------------------------
 pintaJuego :: String -> Mundo -> IO Picture
-pintaJuego juego mundo
+pintaJuego juego mundo@(mov@(estado,pos),j,dif,prof,marca,turno,seleccionado,esMaquina)
+    | esEstadoFinal estado juego = pintaFin mundo
     | juego == "3enRaya" = pintaJuego3enRaya mundo
     | juego == "gato" = pintaJuegoGato mundo
     | otherwise = pintaError 2
@@ -137,6 +139,7 @@ pintaJuego juego mundo
 -- ---------------------------------------------------------------------------------
 hazMovimiento :: Point -> Mundo -> IO Mundo
 hazMovimiento raton mundo@(mov@(estado,pos),juego,dif,prof,marca,turno,seleccionado,esMaquina)
+    | esEstadoFinal estado juego = return inicial
     | juego == "3enRaya" = hazMovimiento3enRaya raton mundo
     | juego == "gato" = hazMovimientoGato raton mundo
     | otherwise = error $ parte1 ++ show juego ++ parte2
@@ -163,7 +166,7 @@ Funciones auxiliares de los gráficos
 
 -- Lista de los juegos aceptados
 listaDeJuegos :: [String]
-listaDeJuegos = ["3 En Raya", "El gato y el raton"]
+listaDeJuegos = ["3 En Raya", "El gato y el raton", "Damas"]
 
 ordenJuegos :: Point
 ordenJuegos = (220.0,-40.0)

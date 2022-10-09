@@ -18,6 +18,7 @@ module Utiles (
         listasDePares,
         siguiente,
         marcaDeLaMaquina,
+        distanciaEuclidea,
         -- Funciones IO
         nuevaLinea,
         now,
@@ -83,22 +84,21 @@ buscaPieza m pieza = head [(f,c) | f<-[min..max], c<-[min..max], (m ! (f,c)) == 
 movimientosPosibles :: Tablero -> Int -> String -> String -> Movimientos
 movimientosPosibles estado quienJuega marcaMaquina juego
     | juego == "3enRaya" = movs3enRaya estado marcaMaquina
-    | juego == "gato" = movsGato estado marcaMaquina
-    | otherwise = otros
+    -- | juego == "gato" = movsGato estado marcaMaquina
+    | otherwise = movsGato estado marcaMaquina
 
 esEstadoFinal :: Tablero -> String -> Bool
 esEstadoFinal t juego
     | juego == "3enRaya" = fin3enRaya t
     | juego == "gato" = finGato t
-    | otherwise = otros
+    | otherwise = False
 
 puntuaEstado :: Tablero -> Pos -> String -> Double
 puntuaEstado t pos juego
     | juego == "3enRaya" = puntua3enRaya t pos
     | juego == "gato" = puntuaGato t pos
-    | otherwise = otros
+    | otherwise = 0.0
 
-otros = undefined
 {- +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 Funciones normales en útiles.
 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ -}
@@ -127,6 +127,9 @@ marcaDeLaMaquina marca juego
     | juego == "3enRaya" = if marca == "X" then "O" else "X"
     | juego == "gato" = if marca == "R" then "G" else "R"
     | otherwise = " "
+
+distanciaEuclidea :: Float -> Float -> Float
+distanciaEuclidea a b = sqrt $ (a - b)**2
 
 {- +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 Funciones de IO en útiles.

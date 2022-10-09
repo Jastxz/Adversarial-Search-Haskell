@@ -212,14 +212,14 @@ pintaOpcionesGato mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, sele
   -- Dibujando los niveles de dificultad
   let tituloDif = translate 0 (head alturasCasillas) $ texto "Dificultad"
   let nivelesDif = head infoEstatica
-  let niveles = translate 0 (alturasCasillas !! 1) $ pictures $ listaTextos nivelesDif 'X' inicioCasillas evolucionCasillas
+  let niveles = translate 0 (alturasCasillas !! 1) $ pictures $ listaTextos nivelesDif 'X' inicioCasillas evolucionCasillas False
   let lNiveles = length nivelesDif
   let cbx1 = pictures $ dibujaCheckbox (lNiveles - 1) dif 'X' inicioCasillas evolucionCasillas
   let checkboxNiveles = translate 0 (alturasCasillas !! 2) cbx1
   -- Dibujando los turnos y las marcas
   let tituloMarca = translate 0 (alturasCasillas !! 3) $ texto "Jugar como"
   let marcasPosibles = infoEstatica !! 1
-  let marcas = translate 0 (alturasCasillas !! 4) $ pictures $ listaTextos marcasPosibles 'X' inicioCasillas evolucionCasillas
+  let marcas = translate 0 (alturasCasillas !! 4) $ pictures $ listaTextos marcasPosibles 'X' inicioCasillas evolucionCasillas False
   let lMarcas = length marcasPosibles
   let cbx2 = pictures $ dibujaCheckbox (lMarcas - 1) turno 'X' inicioCasillas evolucionCasillas
   let checkboxMarcas = translate 0 (alturasCasillas !! 5) cbx2

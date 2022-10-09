@@ -93,6 +93,9 @@ diferenciaParaCasillas = tamTablero / tamMatriz
 ajusteInicial :: Float
 ajusteInicial = ancho / tamMatriz
 
+ajusteInicialMenu :: Float
+ajusteInicialMenu = ancho / (2*tamMatriz)
+
 listaPosiciones :: [Point]
 listaPosiciones = [(x, y) | y <- [a, a - d .. (- a)], x <- [a, a - d .. (- a)]]
   where
@@ -107,12 +110,13 @@ matrizPosiciones = matrix t t $ \p -> fst (head (filter (\(num, pos) -> pos == p
     relacion = zip listaPosiciones ps
 
 distribucionOpciones :: Point
-distribucionOpciones = (-15.0, 5.0)
+distribucionOpciones = (-450.0, 130.0)
 
 alturasCasillas :: [Float]
-alturasCasillas = [ancho, ancho - diferencia .. (- ancho)]
+alturasCasillas = [a, a - diferencia .. (- a)]
   where
-    diferencia = ancho / 5
+    a = ancho - ajusteInicialMenu
+    diferencia = a / 4.5
 
 infoEstatica :: [[String]]
 infoEstatica = [dif, turnos, marcas]
@@ -131,9 +135,10 @@ alturasEstaticas = [dif, turnos, marcas]
 -- -----------------------------------------------------------------------------------------------------------------------
 cambiaOpcion :: Mundo -> Int -> String -> Mundo
 cambiaOpcion mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, seleccionado, esMaquina) nivel opcion
-  | nivel == 0 = (mov, juego, traduceDif opcion, prof, marca, turno, seleccionado, esMaquina)
+  | nivel == 0 = (mov, juego, traduceDif opcion, traduceProf opcion, marca, turno, seleccionado, esMaquina)
   | nivel == 1 = (mov, juego, dif, prof, marca, traduceTurnos opcion, seleccionado, esMaquina)
   | nivel == 2 = (mov, juego, dif, prof, opcion, turno, seleccionado, esMaquina)
+  | nivel == 99 = mundo
   | otherwise = error "El nivel de opciones especificado para la función cambiaOpción del 3 en raya no existe."
 
 -- Aux
@@ -144,6 +149,13 @@ traduceDif dif
   | dif == "Fácil" = 2
   | dif == "Normal" = 3
   | otherwise = 4
+
+-- Aux
+traduceProf :: String -> Int
+traduceProf dif
+  | dif == "Aleatoria" = 0
+  | dif == "Mínima" = 0
+  | otherwise = 9
 
 -- Aux
 traduceTurnos :: String -> Int

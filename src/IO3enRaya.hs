@@ -12,13 +12,13 @@ where
 
 import Data.List
 import Data.Matrix
+import Funciones3enRaya
 import Graphics.Gloss
 import Graphics.Gloss.Interface.IO.Game
 import MiniMax
 import Tipos
 import Utiles
 import UtilesGraficos
-import Funciones3enRaya
 
 {- +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 Funciones IO para ejecutar el programa en consola
@@ -183,23 +183,25 @@ pintaOpciones3enRaya mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, s
   -- Receptáculo para mostrar las opciones
   let borde = rectangleWire 1000 500
   -- Dibujando los niveles de dificultad
-  let tituloDif = translate 0 (head alturasCasillas) $ texto "Dificultad"
+  let tituloDif = translate inicioCasillas (head alturasCasillas) $ texto "Dificultad"
   let nivelesDif = head infoEstatica
-  let niveles = translate 0 (alturasCasillas !! 1) $ pictures $ listaTextos nivelesDif 'X' inicioCasillas evolucionCasillas
+  let niveles = translate 0 (alturasCasillas !! 1) $ pictures $ listaTextos nivelesDif 'X' inicioCasillas evolucionCasillas False
   let lNiveles = length nivelesDif
   let cbx1 = pictures $ dibujaCheckbox (lNiveles - 1) dif 'X' inicioCasillas evolucionCasillas
   let checkboxNiveles = translate 0 (alturasCasillas !! 2) cbx1
   -- Dibujando los turnos a escoger
-  let tituloTurno = translate 0 (alturasCasillas !! 3) $ texto "Turno"
+  let tituloTurno = translate inicioCasillas (alturasCasillas !! 3) $ texto "Turno"
   let turnosPosibles = infoEstatica !! 1
-  let turnos = translate 0 (alturasCasillas !! 4) $ pictures $ listaTextos turnosPosibles 'X' inicioCasillas evolucionCasillas
+  let turnos = translate 0 (alturasCasillas !! 4) $ pictures $ listaTextos turnosPosibles 'X' inicioCasillas evolucionCasillas False
   let lTurnos = length turnosPosibles
-  let cbx2 = pictures $ dibujaCheckbox (lTurnos - 1) turno 'X' inicioCasillas evolucionCasillas
+  let tur | turno <= 0 = 0
+        | otherwise = turno - 1
+  let cbx2 = pictures $ dibujaCheckbox (lTurnos - 1) tur 'X' inicioCasillas evolucionCasillas
   let checkboxTurnos = translate 0 (alturasCasillas !! 5) cbx2
   -- Dibujando las marcas posibles
-  let tituloMarca = translate 0 (alturasCasillas !! 6) $ texto "Signo"
+  let tituloMarca = translate inicioCasillas (alturasCasillas !! 6) $ texto "Signo"
   let marcasPosibles = infoEstatica !! 2
-  let marcas = translate 0 (alturasCasillas !! 7) $ pictures $ listaTextos marcasPosibles 'X' inicioCasillas evolucionCasillas
+  let marcas = translate 0 (alturasCasillas !! 7) $ pictures $ listaTextos marcasPosibles 'X' inicioCasillas evolucionCasillas False
   let numMarca
         | marca == "X" = 0
         | otherwise = 1
@@ -218,28 +220,36 @@ manejaOpciones3enRaya (x, y) mundo@(mov@(estado, pos), juego, dif, prof, marca, 
   let iC = fst distribucionOpciones
   let eC = snd distribucionOpciones
   -- Buscando la casilla en cuestión
-  let indice = maximum [if cercaCasilla y altura then p else 0 | (altura, p) <- zip alturasEstaticas [0 ..]]
-  let fila = infoEstatica !! indice
-  let indice2 = maximum [if cercaCasilla x longitud then p else 0 | (longitud, p) <- zip [iC, iC + eC ..] [0 ..]]
-  let columna = fila !! indice2
+  let indice = minimum [if cercaCasilla y altura then p else 99 | (altura, p) <- zip alturasEstaticas [0 ..]]
+  let fila | indice == 99 = head infoEstatica
+        | otherwise = infoEstatica !! indice
+  let limite = length fila
+  let indice2 = minimum [if cercaCasilla x longitud then p else 99 | (longitud, p) <- zip [iC, iC + eC ..] [0 .. (limite - 1)]]
+  let columna | indice2 == 99 = head fila
+        | otherwise = fila !! indice2
+  let comenzar | indice == 99 = pulsaCerca (x, y) (posXboton, alturasCasillas !! 9)
+        | otherwise = False
   -- Cambiamos la información del juego a ejecutar y preparamos el tablero inicial
-  let nuevoMundo@(m, j, d, p, ma, t, s, e) = cambiaOpcion mundo indice columna
-  let mundoAejecutar = creaTableroConOpciones nuevoMundo
+  let nuevoMundo | indice == 99 || indice2 == 99 = mundo
+        | otherwise = cambiaOpcion mundo indice columna
+  let mundoAejecutar | comenzar = creaTableroConOpciones nuevoMundo
+        | otherwise = nuevoMundo
   return mundoAejecutar
 
 {- Funciones intrínsecas del juego -}
 pintaJuego3enRaya :: Mundo -> IO Picture
 pintaJuego3enRaya mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, seleccionado, esMaquina) = do
+  let alturaMensajes = ancho + 50
   -- Texto de turno
   let mensajeTurno
         | esMaquina = "Le toca a la máquina"
         | otherwise = "Tu turno"
-  let turno = translate 0 300 $ texto mensajeTurno
+  let turno = translate (-correccionPosicion2 ancho) alturaMensajes $ texto mensajeTurno
   -- Dibujo del tablero
   let borde = rectangleWire tamTablero tamTablero
   let casilla = rectangleWire diferenciaParaCasillas diferenciaParaCasillas
   let disCasillas = toList matrizPosiciones
-  let casillas = pictures [translate x y casilla | (x,y) <- disCasillas]
+  let casillas = pictures [translate x y casilla | (x, y) <- disCasillas]
   -- Dibujo del estado
   let t = round tamMatriz
   let posiciones = [(i, j) | i <- [1 .. t], j <- [1 .. t]]
@@ -249,7 +259,7 @@ pintaJuego3enRaya mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, sele
   let mensajeIndicativo
         | esMaquina = "Espere un momento..."
         | otherwise = "Pulse en una casilla vacía para realizar su turno"
-  let indicacion = translate 0 (-300) $ texto mensajeIndicativo
+  let indicacion = translate (-correccionPosicion (1.25*tamTablero)) (-alturaMensajes) $ texto mensajeIndicativo
   -- Resultado
   let res = pictures [turno, casillas, estadoDibujado, indicacion]
   return res
@@ -265,10 +275,10 @@ hazMovimiento3enRaya raton mundo@(mov@(estado, pos), juego, dif, prof, marca, tu
   -- Finalmente realizamos la acción en caso de que la hubiera y fuera realizable ó simplemente no devolvemos nada nuevo
   if not (null pulsadas) && (accion `elem` posiblesAcciones)
     then do
-      let t  = round tamMatriz
-      let posPosibles = [(f,c) | f<-[1..t], c<-[1..t]]
+      let t = round tamMatriz
+      let posPosibles = [(f, c) | f <- [1 .. t], c <- [1 .. t]]
       let relacion = zip (toList matrizPosiciones) posPosibles
-      let posNueva = snd $ head $ filter (\(c,p) -> c==accion) relacion
+      let posNueva = snd $ head $ filter (\(c, p) -> c == accion) relacion
       let nuevoEstado = setElem marca posNueva estado
       return ((nuevoEstado, posNueva), juego, dif, prof, marca, turno, "", True)
     else return mundo
