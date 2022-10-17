@@ -19,7 +19,9 @@ module Funciones3enRaya
     alturasEstaticas,
     cambiaOpcion,
     creaTableroConOpciones,
-    posXboton,
+    posBoton,
+    anchoBoton,
+    altoBoton,
     pintaMarca,
   )
 where
@@ -168,8 +170,14 @@ traduceTurnos turno
 creaTableroConOpciones :: Mundo -> Mundo
 creaTableroConOpciones mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, seleccionado, esMaquina) = (inicial, juego, dif, prof, marca, turno, seleccionado, esMaquina)
 
-posXboton :: Float
-posXboton = 200.0
+posBoton :: (Float, Float)
+posBoton = (ancho - ajusteInicial, (-ancho) + ajusteInicial)
+
+anchoBoton :: Float
+anchoBoton = 130.0
+
+altoBoton :: Float
+altoBoton = 40.0
 
 pintaMarca :: Pos -> Tablero -> Matrix Point -> Picture
 pintaMarca pos estado posiciones

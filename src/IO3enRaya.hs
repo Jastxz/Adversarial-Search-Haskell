@@ -208,7 +208,8 @@ pintaOpciones3enRaya mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, s
   let cbx3 = pictures $ dibujaCheckbox (lTurnos - 1) numMarca 'X' inicioCasillas evolucionCasillas
   let checkboxMarcas = translate 0 (alturasCasillas !! 8) cbx3
   -- Preparamos el botón y la lista para crear la imagen
-  let btn = translate posXboton (alturasCasillas !! 9) $ boton "Comenzar"
+  let (bX, bY) = posBoton
+  let btn = translate bX bY $ boton "Comenzar" anchoBoton altoBoton
   let listaRes = [borde, tituloDif, niveles, checkboxNiveles, tituloTurno, turnos, checkboxTurnos, tituloMarca, marcas, checkboxMarcas, btn]
   -- Resultado
   let res = pictures listaRes
@@ -227,7 +228,7 @@ manejaOpciones3enRaya (x, y) mundo@(mov@(estado, pos), juego, dif, prof, marca, 
   let indice2 = minimum [if cercaCasilla x longitud then p else 99 | (longitud, p) <- zip [iC, iC + eC ..] [0 .. (limite - 1)]]
   let columna | indice2 == 99 = head fila
         | otherwise = fila !! indice2
-  let comenzar | indice == 99 = pulsaCerca (x, y) (posXboton, alturasCasillas !! 9)
+  let comenzar | indice == 99 = pulsaCerca (x, y) posBoton
         | otherwise = False
   -- Cambiamos la información del juego a ejecutar y preparamos el tablero inicial
   let nuevoMundo | indice == 99 || indice2 == 99 = mundo

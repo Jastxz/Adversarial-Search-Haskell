@@ -1,16 +1,20 @@
 module UtilesGraficos
   ( 
+    -- 'Constantes' y colores
     posListaDeJuegos,
     tamCheckbox,
     correccionPosicion,
     correccionPosicion2,
-    anchoBoton,
-    altoBoton,
     texto,
+    marron,
+    -- Funciones
     listaTextos,
     dibujaCheckbox,
     boton,
+    pulsaBox,
+    cercaBox,
     pulsaCerca,
+    pulsaCercaMini,
     pulsaCasilla,
     cercaCasilla,
     pintaFin,
@@ -36,14 +40,11 @@ correccionPosicion ancho = ancho/2.0
 correccionPosicion2 :: Float -> Float
 correccionPosicion2 ancho = ancho/4.0
 
-anchoBoton :: Float
-anchoBoton = 130.0
-
-altoBoton :: Float
-altoBoton = 40.0
-
 texto :: String -> Picture
 texto = scale 0.2 0.2 . color black . text
+
+marron :: Color
+marron = makeColorI 140 76 0 255
 
 listaTextos :: [String] -> Char -> Float -> Float -> Bool -> [Picture]
 listaTextos [] _ _ _ _ = []
@@ -67,42 +68,84 @@ dibujaCheckbox' total elegido eje actual modificador acum
             checkbox | acum == elegido = cuadroRelleno | otherwise = cuadroVacio
             siguiente = dibujaCheckbox' total elegido eje (actual + modificador) modificador (acum + 1)
 
-boton :: String -> Picture
-boton palabra = pictures [fondo, tx]
+boton :: String -> Float -> Float -> Picture
+boton palabra an al = pictures [fondo, tx]
     where
-        fondo = color (dark green) (rectangleSolid anchoBoton altoBoton)
-        tx = translate (-correccionPosicion anchoBoton) (-correccionPosicion2 altoBoton) $ color white (texto palabra)
+        fondo = color (dark green) (rectangleSolid an al)
+        tx = translate (-correccionPosicion an) (-correccionPosicion2 al) $ color white (texto palabra)
 
+-- -----------------------------------------------------------------------------------------------------------------------
+pulsaBox :: Point -> Point -> Bool
+pulsaBox (x,y) (i,j)
+  | cercaBox x i && cercaBox y j = True
+  | otherwise = False
+
+-- Aux
+cercaBox :: Float -> Float -> Bool
+cercaBox a b
+  | resta <= 10.0 = True
+  | otherwise = False
+    where
+      resta = distanciaEuclidea a b
+-- -----------------------------------------------------------------------------------------------------------------------
+-- -----------------------------------------------------------------------------------------------------------------------
 pulsaCerca :: Point -> Point -> Bool
 pulsaCerca (x,y) (i,j)
   | cercaX x i && cercaY y j = True
   | otherwise = False
 
+-- Aux
 cercaX :: Float -> Float -> Bool
 cercaX a b
   | resta <= 150.0 = True
   | otherwise = False
     where
-      resta = abs $ abs a - abs b
+      resta = distanciaEuclidea a b
 
+-- Aux
 cercaY :: Float -> Float -> Bool
 cercaY a b
   | resta <= 20.0 = True
   | otherwise = False
     where
-      resta = abs $ abs a - abs b
+      resta = distanciaEuclidea a b
+-- -----------------------------------------------------------------------------------------------------------------------
+-- -----------------------------------------------------------------------------------------------------------------------
+pulsaCercaMini :: Point -> Point -> Bool
+pulsaCercaMini (x,y) (i,j)
+  | cercaXMini x i && cercaYMini y j = True
+  | otherwise = False
 
+-- Aux
+cercaXMini :: Float -> Float -> Bool
+cercaXMini a b
+  | resta <= 15.0 = True
+  | otherwise = False
+    where
+      resta = distanciaEuclidea a b
+
+-- Aux
+cercaYMini :: Float -> Float -> Bool
+cercaYMini a b
+  | resta <= 15.0 = True
+  | otherwise = False
+    where
+      resta = distanciaEuclidea a b
+-- -----------------------------------------------------------------------------------------------------------------------
+-- -----------------------------------------------------------------------------------------------------------------------
 pulsaCasilla :: Point -> Point -> Bool
 pulsaCasilla (x,y) (i,j)
   | cercaCasilla x i && cercaCasilla y j = True
   | otherwise = False
 
+-- Aux
 cercaCasilla :: Float -> Float -> Bool
 cercaCasilla a b
-  | resta <= 10.0 = True
+  | resta <= 50.0 = True
   | otherwise = False
     where
       resta = distanciaEuclidea a b
+-- -----------------------------------------------------------------------------------------------------------------------
 
 pintaFin :: Mundo -> IO Picture
 pintaFin mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, seleccionado, esMaquina) = do

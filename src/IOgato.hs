@@ -203,32 +203,33 @@ Funciones IO para ejecutar el programa con gráficos
 
 {- Funciones de las opciones -}
 pintaOpcionesGato :: Mundo -> IO Picture
-pintaOpcionesGato mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, seleccionado, esMaquina) = do
+pintaOpcionesGato mundo@(m@(e,p), juego, dif, prof, marca, turno, seleccionado, esMaquina) = do
+  let mov | rangos e == (1,1) = inicial (turnoApos turno) | otherwise = m
   -- Valores de separación entre las casillas de las opciones
   let inicioCasillas = fst distribucionOpciones
   let evolucionCasillas = snd distribucionOpciones
   -- Receptáculo para mostrar las opciones
   let borde = rectangleWire 1000 500
   -- Dibujando los niveles de dificultad
-  let tituloDif = translate 0 (head alturasCasillas) $ texto "Dificultad"
+  let tituloDif = translate inicioCasillas (head alturasCasillas) $ texto "Dificultad"
   let nivelesDif = head infoEstatica
   let niveles = translate 0 (alturasCasillas !! 1) $ pictures $ listaTextos nivelesDif 'X' inicioCasillas evolucionCasillas False
   let lNiveles = length nivelesDif
   let cbx1 = pictures $ dibujaCheckbox (lNiveles - 1) dif 'X' inicioCasillas evolucionCasillas
   let checkboxNiveles = translate 0 (alturasCasillas !! 2) cbx1
   -- Dibujando los turnos y las marcas
-  let tituloMarca = translate 0 (alturasCasillas !! 3) $ texto "Jugar como"
+  let tituloMarca = translate inicioCasillas (alturasCasillas !! 3) $ texto "Jugar como"
   let marcasPosibles = infoEstatica !! 1
   let marcas = translate 0 (alturasCasillas !! 4) $ pictures $ listaTextos marcasPosibles 'X' inicioCasillas evolucionCasillas False
   let lMarcas = length marcasPosibles
-  let cbx2 = pictures $ dibujaCheckbox (lMarcas - 1) turno 'X' inicioCasillas evolucionCasillas
+  let mrc | marca == "R" = 0 | otherwise = 1
+  let cbx2 = pictures $ dibujaCheckbox (lMarcas - 1) mrc 'X' inicioCasillas evolucionCasillas
   let checkboxMarcas = translate 0 (alturasCasillas !! 5) cbx2
-  let tableroMostrado = pintaComienzoTablero mov
-  let tableroSituado = translate 0 alturaTablero tableroMostrado
+  tableroMostrado <- pintaComienzoTablero mov
   -- Preparamos el botón y la lista para crear la imagen
   let (bX, bY) = posBoton
-  let btn = translate bX bY $ boton "Comenzar"
-  let listaRes = [borde, tituloDif, niveles, checkboxNiveles, tituloMarca, marcas, checkboxMarcas, tableroSituado, btn]
+  let btn = translate bX bY $ boton "Comenzar" anchoBoton altoBoton
+  let listaRes = [borde, tituloDif, niveles, checkboxNiveles, tituloMarca, marcas, checkboxMarcas, tableroMostrado, btn]
   -- Resultado
   let res = pictures listaRes
   return res
@@ -239,18 +240,22 @@ manejaOpcionesGato raton@(x, y) mundo@(mov@(estado, pos), juego, dif, prof, marc
   let iC = fst distribucionOpciones
   let eC = snd distribucionOpciones
   -- Buscando la casilla en cuestión
-  let indice = minimum [if cercaCasilla y altura then p else 99 | (altura, p) <- zip alturasEstaticas [0 ..]]
+  let indice = minimum [if cercaBox y altura then p else 99 | (altura, p) <- zip alturasEstaticas [0 ..]]
   let fila | indice == 99 = head infoEstatica | otherwise = infoEstatica !! indice
-  let indice2 = minimum [if cercaCasilla x longitud then p else 99 | (longitud, p) <- zip [iC, iC + eC ..] [0 ..]]
-  let columna | indice == 99 = head fila | otherwise =  fila !! indice2
+  let limite = length fila
+  let indice2 = minimum [if cercaBox x longitud then p else 99 | (longitud, p) <- zip [iC, iC + eC ..] [0 .. (limite - 1)]]
+  let columna | indice == 99 || indice2 == 99 = head fila | otherwise =  fila !! indice2
+  let comenzar | indice == 99 = pulsaCerca (x, y) posBoton
+        | otherwise = False
   -- Preparamos las variables para el caso de que empiece la máquina en el primer turno
-  let falsoInicial = inicial (6, 5)
+  let falsoInicial = inicial (turnoApos turno)
   movMaquina <- usaNegamax falsoInicial 2 10 "R" "gato"
   -- Cambiamos la información del juego a ejecutar y preparamos el tablero inicial
-  let nuevoMundo@(m, j, d, p, ma, t, s, e) = cambiaOpcion raton mundo indice columna
+  nuevoMundo@(m, j, d, p, ma, t, s, e) <- cambiaOpcion raton mundo indice columna
   let mundoMaquina = (movMaquina, j, d, p, ma, t, s, e)
-  let mundoAejecutar | ma == "R" = creaTableroConOpciones nuevoMundo
-        | otherwise = creaTableroConOpciones mundoMaquina
+  let mundoAejecutar | comenzar && ma == "R" = creaTableroConOpciones nuevoMundo
+        | comenzar && ma /= "R" = creaTableroConOpciones mundoMaquina
+        | otherwise = nuevoMundo
   return mundoAejecutar
 
 {- Funciones intrínsecas del juego -}
@@ -263,7 +268,7 @@ pintaJuegoGato mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, selecci
   let turno = translate 0 300 $ texto mensajeTurno
   -- Dibujo del tablero
   let borde = rectangleWire tamTablero tamTablero
-  let casNegra = color black $ rectangleSolid diferenciaParaCasillas diferenciaParaCasillas
+  let casNegra = color marron $ rectangleSolid diferenciaParaCasillas diferenciaParaCasillas
   let cuadradosDibujados = pictures [translate i j casNegra | (i, j) <- casillasNegras]
   -- Dibujo del estado
   let tam = round tamMatriz
@@ -274,11 +279,11 @@ pintaJuegoGato mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, selecci
   -- Texto indicativo
   let mensajeIndicativo
         | esMaquina = "Espere un momento..."
-        | seleccionado == "" = "Pulse en una casilla vacía para mover la ficha"
+        | seleccionado /= "" = "Pulse en una casilla vacía válida para mover la ficha"
         | otherwise = "Pulse en una ficha para seleccionarla"
   let indicacion = translate 0 (-300) $ texto mensajeIndicativo
   -- Resultado
-  let res = pictures [turno, cuadradosDibujados, estadoDibujado, indicacion]
+  let res = pictures [turno, borde, cuadradosDibujados, estadoDibujado, indicacion]
   return res
 
 hazMovimientoGato :: Point -> Mundo -> IO Mundo
@@ -287,12 +292,11 @@ hazMovimientoGato raton mundo@(mov@(estado, pos), juego, dif, prof, marca, turno
   let posCasillas = casillasBlancas
   -- Comprobamos si ha pulsado cerca de alguna casilla para realizar una acción de juego
   let pulsadas = [casilla | casilla <- posCasillas, pulsaCasilla casilla raton]
-  let accion = head pulsadas
   -- Finalmente realizamos la acción en caso de que la hubiera y fuera realizable ó simplemente no devolvemos nada nuevo
   if not (null pulsadas)
     then do
-      let nuevoMundo = calculaNuevoEstado accion mundo
-      return nuevoMundo
+      let accion = head pulsadas
+      calculaNuevoEstado accion mundo
     else return mundo
 
 {- Función para el turno de la máquina -}
