@@ -150,9 +150,10 @@ cercaCasilla a b
 pintaFin :: Mundo -> IO Picture
 pintaFin mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, seleccionado, esMaquina) = do
   let borde = translate 0 10 $ color white $ rectangleSolid 350 50
-  let error | esMaquina = "Enhorabuena, has ganado."
+  let tx  | seleccionado == "empate" = "Habeis empatado..." 
+        | esMaquina = "Enhorabuena, has ganado."
         | otherwise = "La maquina ha ganado..."
-  let mensaje = translate (-150) 0 $ texto error
+  let mensaje = translate (-150) 0 $ texto tx
   let res = pictures [borde,mensaje]
   return res
 

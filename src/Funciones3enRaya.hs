@@ -146,17 +146,17 @@ cambiaOpcion mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, seleccion
 -- Aux
 traduceDif :: String -> Int
 traduceDif dif
-  | dif == "Aleatoria" = 0
   | dif == "Mínima" = 1
   | dif == "Fácil" = 2
   | dif == "Normal" = 3
-  | otherwise = 4
+  | dif == "Difícil" = 4
+  | otherwise = 0
 
 -- Aux
 traduceProf :: String -> Int
 traduceProf dif
-  | dif == "Aleatoria" = 0
-  | dif == "Mínima" = 0
+  | dif == "Aleatoria" = 1
+  | dif == "Mínima" = 1
   | otherwise = 9
 
 -- Aux
@@ -168,7 +168,12 @@ traduceTurnos turno
 -- -----------------------------------------------------------------------------------------------------------------------
 
 creaTableroConOpciones :: Mundo -> Mundo
-creaTableroConOpciones mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, seleccionado, esMaquina) = (inicial, juego, dif, prof, marca, turno, seleccionado, esMaquina)
+creaTableroConOpciones mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, seleccionado, esMaquina)
+  | turno == 2 = (inicial, juego, dif, p, m, turno, seleccionado, True)
+  | otherwise = (inicial, juego, dif, p, m, turno, seleccionado, False)
+    where
+      m | marca == "O" || marca == "X" = marca | otherwise = "O"
+      p | prof == 0 = 1 | otherwise = prof
 
 posBoton :: (Float, Float)
 posBoton = (ancho - ajusteInicial, (-ancho) + ajusteInicial)

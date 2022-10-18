@@ -14,25 +14,10 @@ import UtilesGraficos
 
 mainInteraction :: IO ()
 mainInteraction = do
-  -- Ejecución del programa con IO básico
-  {- putStrLn "Escoja el juego al que desea jugar escribiendo el número correspondiente."
-  putStrLn "0 para el 3 en raya. 1 para el gato y el ratón."
-  juego <- leeDigito "Introduzca el número: "
-  juegoAlanzar juego -}
-
   -- Ejecución del programa con gráficos
   putStrLn "Cargando..."
   playIO ventanaJuego fondo tasaDeRefresco inicial dibujaMundo manejaEntrada actualiza
   putStrLn "¡Gracias por jugar!"
-
-{- +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-Funciones para el programa IO básico
-+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ -}
-
-juegoAlanzar :: Int -> IO ()
-juegoAlanzar juego
-  | juego == 0 = interactua3enRaya
-  | otherwise = interactuaGato
 
 {- +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 Funciones para los gráficos
@@ -151,6 +136,7 @@ pintaJuego juego mundo@(mov@(estado, pos), j, dif, prof, marca, turno, seleccion
 hazMovimiento :: Point -> Mundo -> IO Mundo
 hazMovimiento raton mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, seleccionado, esMaquina)
   | esEstadoFinal estado juego = return inicial
+  | esMaquina = return mundo
   | juego == "3enRaya" = hazMovimiento3enRaya raton mundo
   | juego == "gato" = hazMovimientoGato raton mundo
   | otherwise = error $ parte1 ++ show juego ++ parte2

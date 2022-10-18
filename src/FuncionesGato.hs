@@ -269,7 +269,7 @@ cerosEnCadena d = "0" ++ cerosEnCadena (d-1)
 cambiaOpcion :: Point -> Mundo -> Int -> String -> IO Mundo
 cambiaOpcion raton@(x,y) mundo@(mov@(estado,pos),juego,dif,prof,marca,turno,seleccionado,esMaquina) nivel opcion
     | nivel == 0 = do
-        let nuevoMundo = (mov,juego,traduceDif opcion,prof,marca,turno,seleccionado,esMaquina)
+        let nuevoMundo = (mov,juego,traduceDif opcion,traduceProf opcion,marca,turno,seleccionado,esMaquina)
         return nuevoMundo
     | nivel == 1 = do
         let nuevoMundo = (mov,juego,dif,prof,opcion,turno,seleccionado,esMaquina)
@@ -282,11 +282,20 @@ cambiaOpcion raton@(x,y) mundo@(mov@(estado,pos),juego,dif,prof,marca,turno,sele
 -- Aux
 traduceDif :: String -> Int
 traduceDif dif
-    | dif == "Aleatoria" = 0
-    | dif == "Mínima" = 1
-    | dif == "Fácil" = 2
-    | dif == "Normal" = 3
-    | otherwise  = 4
+  | dif == "Mínima" = 1
+  | dif == "Fácil" = 2
+  | dif == "Normal" = 3
+  | dif == "Difícil" = 4
+  | otherwise = 0
+
+-- Aux
+traduceProf :: String -> Int
+traduceProf dif
+  | dif == "Mínima" = 1
+  | dif == "Fácil" = 5
+  | dif == "Normal" = 10
+  | dif == "Difícil" = 10
+  | otherwise = 1
 
 cambiaMiniTablero :: Point -> Mundo -> IO Mundo
 cambiaMiniTablero raton mundo@(mov@(estado,pos),juego,dif,prof,marca,turno,seleccionado,esMaquina)
@@ -303,8 +312,10 @@ cambiaMiniTablero raton mundo@(mov@(estado,pos),juego,dif,prof,marca,turno,selec
 
 creaTableroConOpciones :: Mundo -> Mundo
 creaTableroConOpciones mundo@(mov@(estado,pos),juego,dif,prof,marca,turno,seleccionado,esMaquina)
-    | marca == "R" = (inicial (turnoApos turno),juego,dif,prof,marca,turno,seleccionado,esMaquina)
-    | otherwise = (mov,juego,dif,prof,"G",turno,seleccionado,esMaquina)
+    | marca == "R" = (inicial (turnoApos turno),juego,dif,p,marca,turno,seleccionado,False)
+    | otherwise = (mov,juego,dif,p,"G",turno,seleccionado,True)
+        where
+            p | prof == 0 = 1 | otherwise = prof
 
 -- -----------------------------------------------------------------------------------------------------------------------
 calculaNuevoEstado :: Point -> Mundo -> IO Mundo
