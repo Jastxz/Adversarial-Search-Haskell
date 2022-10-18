@@ -4,6 +4,7 @@ module MiniMax
 where
 
 import Data.List
+
 import Tipos
 import Utiles
 
@@ -13,8 +14,8 @@ Negamax básico
 negamax :: Movimiento -> Int -> Int -> String -> String -> IO TableroPuntuado
 negamax mov dificultad profundidad marcaMaquina juego
   -- Según la dificultad escogemos el estilo del negamax
-  | dificultad == 2 = negamaxConPoda mov profundidad marcaMaquina juego puntuacion (1 / 0) 2
-  | dificultad >= 3 = negamaxCompleto mov profundidad marcaMaquina juego puntuacion (1 / 0) 2
+  | dificultad == 3 = negamaxConPoda mov profundidad marcaMaquina juego puntuacion (1 / 0) 2
+  | dificultad >= 4 = negamaxCompleto mov profundidad marcaMaquina juego puntuacion (1 / 0) 2
   | otherwise = do
     iteraNegamax mov profundidad marcaMaquina juego puntuacion 2
   where
