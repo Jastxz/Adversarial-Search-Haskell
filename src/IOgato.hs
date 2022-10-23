@@ -47,6 +47,11 @@ usaNegamax m dif prof marca juego = do
   print mejorMovimiento -}
   return mejorMovimiento
 
+inicializaTableroParaCasoGato :: Int -> IO Movimiento
+inicializaTableroParaCasoGato turno = usaNegamax falsoInicial 3 5 "R" "gato"
+  where
+    falsoInicial = inicial (turnoApos turno)
+
 {- +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 Funciones IO para ejecutar el programa con gráficos
 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ -}
@@ -97,8 +102,7 @@ manejaOpcionesGato raton@(x, y) mundo@(mov@(estado, pos), juego, dif, prof, marc
   let columna | indice == 99 || indice2 == 99 = head fila | otherwise =  fila !! indice2
   let comenzar = pulsaCerca raton posBoton
   -- Preparamos las variables para el caso de que empiece la máquina en el primer turno
-  let falsoInicial = inicial (turnoApos turno)
-  movMaquina <- usaNegamax falsoInicial dif prof "R" "gato"
+  movMaquina <- inicializaTableroParaCasoGato turno
   -- Cambiamos la información del juego a ejecutar y preparamos el tablero inicial
   nuevoMundo@(m, j, d, p, ma, t, s, e) <- cambiaOpcion raton mundo indice columna
   let mundoMaquina = (movMaquina, j, d, p, ma, t, s, e)
