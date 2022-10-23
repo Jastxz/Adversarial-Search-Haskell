@@ -162,7 +162,7 @@ hazMovimiento3enRaya raton mundo@(mov@(estado, pos), juego, dif, prof, marca, tu
 mueveMaquina3enRaya :: Mundo -> IO Mundo
 mueveMaquina3enRaya mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, seleccionado, esMaquina) = do
   let marcaMaquina = marcaDeLaMaquina marca juego
-  mn <- trataDificultad mov dif prof marcaMaquina
-  let sel | lleno estado && not (hay3EnRaya estado) = "empate" | otherwise = seleccionado
+  mn@(e,p) <- trataDificultad mov dif prof marcaMaquina
+  let sel | lleno e && not (hay3EnRaya e) = "empate" | otherwise = seleccionado
   let nuevoMundo = (mn, juego, dif, prof, marca, turno, sel, False)
   return nuevoMundo

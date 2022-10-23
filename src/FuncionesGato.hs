@@ -292,8 +292,8 @@ traduceDif dif
 traduceProf :: String -> Int
 traduceProf dif
   | dif == "Mínima" = 1
-  | dif == "Fácil" = 5
-  | dif == "Normal" = 10
+  | dif == "Fácil" = 7
+  | dif == "Normal" = 8
   | dif == "Difícil" = 10
   | otherwise = 1
 

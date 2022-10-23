@@ -182,7 +182,6 @@ fin3enRaya :: Tablero -> Bool
 fin3enRaya t = lleno t || hay3EnRaya t
 
 puntua3enRaya :: Tablero -> Pos -> Double
--- puntua3enRaya t pos = if hay3EnRaya t then 10.0 else 0
 puntua3enRaya t pos = hay2
     where
         hay3 = if hay3EnRaya t then 10.0 else 0
