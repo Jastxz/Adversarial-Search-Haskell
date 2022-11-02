@@ -50,7 +50,7 @@ Funciones IO para ejecutar el programa con gráficos
 
 {- Funciones de las opciones -}
 pintaOpciones3enRaya :: Mundo -> IO Picture
-pintaOpciones3enRaya mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, seleccionado, esMaquina) = do
+pintaOpciones3enRaya mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, seleccionado, esMaquina, adicional) = do
   -- Valores de separación entre las casillas de las opciones
   let inicioCasillas = fst distribucionOpciones
   let evolucionCasillas = snd distribucionOpciones
@@ -68,7 +68,8 @@ pintaOpciones3enRaya mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, s
   let turnosPosibles = infoEstatica !! 1
   let turnos = translate 0 (alturasCasillas !! 4) $ pictures $ listaTextos turnosPosibles 'X' inicioCasillas evolucionCasillas False
   let lTurnos = length turnosPosibles
-  let tur | turno <= 0 = 0
+  let tur
+        | turno <= 0 = 0
         | otherwise = turno - 1
   let cbx2 = pictures $ dibujaCheckbox (lTurnos - 1) tur 'X' inicioCasillas evolucionCasillas
   let checkboxTurnos = translate 0 (alturasCasillas !! 5) cbx2
@@ -90,35 +91,39 @@ pintaOpciones3enRaya mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, s
   return res
 
 manejaOpciones3enRaya :: Point -> Mundo -> IO Mundo
-manejaOpciones3enRaya raton@(x, y) mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, seleccionado, esMaquina) = do
+manejaOpciones3enRaya raton@(x, y) mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, seleccionado, esMaquina, adicional) = do
   -- Valores de separación entre las casillas de las opciones
   let iC = fst distribucionOpciones
   let eC = snd distribucionOpciones
   -- Buscando la casilla en cuestión
   let indice = minimum [if cercaCasilla y altura then p else 99 | (altura, p) <- zip alturasEstaticas [0 ..]]
-  let fila | indice == 99 = head infoEstatica
+  let fila
+        | indice == 99 = head infoEstatica
         | otherwise = infoEstatica !! indice
   let limite = length fila
   let indice2 = minimum [if cercaCasilla x longitud then p else 99 | (longitud, p) <- zip [iC, iC + eC ..] [0 .. (limite - 1)]]
-  let columna | indice2 == 99 = head fila
+  let columna
+        | indice2 == 99 = head fila
         | otherwise = fila !! indice2
   let comenzar = pulsaCerca raton posBoton
   -- Cambiamos la información del juego a ejecutar y preparamos el tablero inicial
-  let nuevoMundo | indice == 99 || indice2 == 99 = mundo
+  let nuevoMundo
+        | indice == 99 || indice2 == 99 = mundo
         | otherwise = cambiaOpcion mundo indice columna
-  let mundoAejecutar | comenzar = creaTableroConOpciones nuevoMundo
+  let mundoAejecutar
+        | comenzar = creaTableroConOpciones nuevoMundo
         | otherwise = nuevoMundo
   return mundoAejecutar
 
 {- Funciones intrínsecas del juego -}
 pintaJuego3enRaya :: Mundo -> IO Picture
-pintaJuego3enRaya mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, seleccionado, esMaquina) = do
+pintaJuego3enRaya mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, seleccionado, esMaquina, adicional) = do
   let alturaMensajes = ancho + 50
   -- Texto de turno
   let mensajeTurno
         | esMaquina = "Le toca a la máquina"
         | otherwise = "Tu turno"
-  let turno = translate (-correccionPosicion2 ancho) alturaMensajes $ texto mensajeTurno
+  let turno = translate (- correccionPosicion2 ancho) alturaMensajes $ texto mensajeTurno
   -- Dibujo del tablero
   let borde = rectangleWire tamTablero tamTablero
   let casilla = rectangleWire diferenciaParaCasillas diferenciaParaCasillas
@@ -133,13 +138,13 @@ pintaJuego3enRaya mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, sele
   let mensajeIndicativo
         | esMaquina = "Espere un momento..."
         | otherwise = "Pulse en una casilla vacía para realizar su turno"
-  let indicacion = translate (-correccionPosicion (1.25*tamTablero)) (-alturaMensajes) $ texto mensajeIndicativo
+  let indicacion = translate (- correccionPosicion (1.25 * tamTablero)) (- alturaMensajes) $ texto mensajeIndicativo
   -- Resultado
   let res = pictures [turno, casillas, estadoDibujado, indicacion]
   return res
 
 hazMovimiento3enRaya :: Point -> Mundo -> IO Mundo
-hazMovimiento3enRaya raton mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, seleccionado, esMaquina) = do
+hazMovimiento3enRaya raton mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, seleccionado, esMaquina, adicional) = do
   -- Casillas donde puede haber pulsado el jugador para interaccionar con el juego
   let posCasillas = toList matrizPosiciones
   -- Comprobamos si ha pulsado cerca de alguna casilla para realizar una acción de juego
@@ -154,15 +159,18 @@ hazMovimiento3enRaya raton mundo@(mov@(estado, pos), juego, dif, prof, marca, tu
       let relacion = zip (toList matrizPosiciones) posPosibles
       let posNueva = snd $ head $ filter (\(c, p) -> c == accion) relacion
       let nuevoEstado = setElem marca posNueva estado
-      let sel | lleno nuevoEstado && not (hay3EnRaya nuevoEstado) = "empate" | otherwise = ""
-      return ((nuevoEstado, posNueva), juego, dif, prof, marca, turno, sel, True)
+      let sel | lleno nuevoEstado && not (hay3EnRaya nuevoEstado) = "empate"
+            | esEstadoFinal nuevoEstado juego = "humano"
+            | otherwise = ""
+      return ((nuevoEstado, posNueva), juego, dif, prof, marca, turno, sel, True, adicional)
     else return mundo
 
 {- Función para el turno de la máquina -}
 mueveMaquina3enRaya :: Mundo -> IO Mundo
-mueveMaquina3enRaya mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, seleccionado, esMaquina) = do
+mueveMaquina3enRaya mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, seleccionado, esMaquina, adicional) = do
   let marcaMaquina = marcaDeLaMaquina marca juego
-  mn@(e,p) <- trataDificultad mov dif prof marcaMaquina
-  let sel | lleno e && not (hay3EnRaya e) = "empate" | otherwise = seleccionado
-  let nuevoMundo = (mn, juego, dif, prof, marca, turno, sel, False)
+  mn@(e, p) <- trataDificultad mov dif prof marcaMaquina
+  let sel | lleno e && not (hay3EnRaya e) = "empate"
+        | otherwise = seleccionado
+  let nuevoMundo = (mn, juego, dif, prof, marca, turno, sel, False, adicional)
   return nuevoMundo

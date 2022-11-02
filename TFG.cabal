@@ -14,7 +14,7 @@ name:               TFG
 -- PVP summary:      +-+------- breaking API changes
 --                   | | +----- non-breaking API additions
 --                   | | | +--- code changes with no API change
-version:            0.4.0.4
+version:            0.4.1.0
 
 -- A short (one-line) description of the package.
 synopsis:           An academic approach of Adversarial Search using Haskell.
@@ -39,7 +39,7 @@ maintainer:         javicraft14@gmail.com
 
 -- A copyright notice.
 -- copyright:
-category:           Game
+category:           Game, AI
 
 -- Extra files to be distributed with the package, such as examples or a README.
 extra-source-files:
@@ -55,6 +55,7 @@ library
         Tipos, Utiles, UtilesGraficos,
         IO3enRaya, Funciones3enRaya,
         IOgato, FuncionesGato,
+        IOdamas, FuncionesDamas,
         MiniMax
 
     -- LANGUAGE extensions used by modules in this package.

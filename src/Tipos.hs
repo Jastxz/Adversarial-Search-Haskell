@@ -23,4 +23,4 @@ type TableroPuntuado = (Tablero,Double)
 
 type Movimientos = [Movimiento]
 type TablerosPuntuados = [TableroPuntuado]
-type Mundo = (Movimiento, String, Int, Int, String, Int, String, Bool)
+type Mundo = (Movimiento, String, Int, Int, String, Int, String, Bool, [[String]])

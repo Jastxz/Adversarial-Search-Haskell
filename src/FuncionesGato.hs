@@ -1,11 +1,10 @@
 module FuncionesGato (
         -- Funciones normales
         posicionesInicialesGatos,
+        nombresGatos,
         falsoInicial,
         inicial,
         casillasVaciasRaton,
-        ratonEncerrado,
-        ratonEscapado,
         movsGato,
         intercambiaPieza,
         -- Funciones gráficas
@@ -42,6 +41,7 @@ import Utiles
 import UtilesGraficos
 
 posicionesInicialesGatos = [(8,2),(8,4),(8,6),(8,8)]
+nombresGatos = ["G2","G4","G6","G8"]
 
 falsoInicial :: Tablero
 falsoInicial = matrix tam tam $ \(i,j) -> añadePiezas (i,j)
@@ -61,72 +61,32 @@ añadePiezas actual
         where
             suma = uncurry (+) actual
 
-casillasVaciasRaton :: Tablero -> [Pos]
-casillasVaciasRaton m = filter (\ c -> (m ! c) == " ") casillasAlrededor
-    where
-        (min,max) = rangos m
-        casillas = [(i,j) | i<-[min..max], j<-[min..max]]
-        raton = filter (\pos -> (m ! pos) == "R") casillas
-        (f,c) | null raton = (1,1) | otherwise = cabeza "casillasVaciasRaton" raton
-        casillasAlrededor = casillasAlrededorFicha m (f,c)
+casillasVaciasRaton :: Tablero -> Pos -> [Pos]
+casillasVaciasRaton = casillasAlrededorFicha
 
 casillasVaciasGatos :: Tablero -> [Pos]
-casillasVaciasGatos m = filter (\ c -> (m ! c) == " ") casillasAlrededor
-    where
-        (min,max) = rangos m
-        casillas = [(i,j) | i<-[min..max], j<-[min..max]]
-        casillasGatos = filter (\pos -> (m ! pos) `elem` ["G2","G4","G6","G8"]) casillas
-        casillasAlrededor = concatMap (casillasValidasGatos m) casillasGatos
+casillasVaciasGatos m = concat [casillasValidasGatos m (buscaPieza m g) | g <- nombresGatos]
 
 casillasValidasGatos :: Tablero -> Pos -> [Pos]
 casillasValidasGatos m pos@(f,c) = filter (\(i,j) -> i < f) casillasAlrededor
     where
         casillasAlrededor = casillasAlrededorFicha m pos
 
-ratonEncerrado :: Tablero -> Bool
-ratonEncerrado t = null (casillasVaciasRaton t)
-
-ratonEscapado :: Tablero -> Bool
-ratonEscapado t = filaRaton >= filaGato
-    where
-        (rmen, rmay) = rangos t
-        posiciones = [(i,j) | i<-[rmen..rmay], j<-[rmen..rmay]]
-        filaRaton = fst $ cabeza "ratonEscapado" $ filter (\p -> (t ! p) == "R") posiciones
-        filaGato = maximum $ map fst $ filter (\p -> (t ! p) `elem` ["G2","G4","G6","G8"]) posiciones
-
 movsGato :: Tablero -> String -> Movimientos
 movsGato t marca
-    | marca == "R" = nub $ map (mueveRaton t) (casillasVaciasRaton t)
-    | otherwise = nub $ mueveGato t (casillasVaciasGatos t)
-
-mueveRaton :: Tablero -> Pos -> Movimiento
-mueveRaton t pos
-    | length estaAlrededor == 1 = (intercambiaPieza t "R" pos (cabeza "mueveRaton" estaAlrededor), pos)
-    | otherwise = (t,pos)
+    | marca == "R" = nub $ map (\pos -> (intercambiaPieza t "R" pos posPieza, pos)) (casillasVaciasRaton t posPieza)
+    | otherwise = nub $ mueveGato t posGatos
         where
-            validas = casillasAlrededorFicha t pos
-            estaAlrededor = filter (\p -> (t ! p) == "R") validas
+            posPieza = buscaPieza t marca
+            posGatos = [buscaPieza t m | m<-nombresGatos]
 
 mueveGato :: Tablero -> [Pos] -> Movimientos
 mueveGato _ [] = []
-mueveGato t (p:ps)
-    | tamG == 1 = (intercambiaPieza t (t ! cabeza "mueveRaton" gatosAlrededor) p (cabeza "mueveRaton" gatosAlrededor), p) : mueveGato t ps
-    | tamG > 1 = intercambia2piezas t gatosAlrededor p ++ mueveGato t ps
-    | otherwise = (t,p) : mueveGato t ps
+mueveGato t (g:gs) = movimientosDelGato ++ mueveGato t gs
         where
-            validas = casillasAlrededorFicha t p
-            gatosAlrededor = filter (\v -> (t ! v) `elem` ["G2","G4","G6","G8"]) validas
-            tamG = length gatosAlrededor
-
-intercambiaPieza :: Tablero -> String -> Pos -> Pos -> Tablero
-intercambiaPieza t pieza posNueva posAntigua = setElem pieza posNueva $ setElem " " posAntigua t
-
-intercambia2piezas :: Tablero -> [Pos] -> Pos -> Movimientos
-intercambia2piezas t gatosAlrededor pos = [(intercambiaPieza t (t ! g) pos g, pos) | g<-gatosAlrededor]
-
-{- +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-Funciones que tienen que ver con la escritura y lectura en consola.
-+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ -}
+            validas = casillasValidasGatos t g
+            nombre = t ! g
+            movimientosDelGato = map (\v -> (intercambiaPieza t nombre v g, v)) validas
 
 {- +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 Funciones auxiliares para los gráficos
@@ -267,12 +227,12 @@ cerosEnCadena d = "0" ++ cerosEnCadena (d-1)
 -- -----------------------------------------------------------------------------------------------------------------------
 -- -----------------------------------------------------------------------------------------------------------------------
 cambiaOpcion :: Point -> Mundo -> Int -> String -> IO Mundo
-cambiaOpcion raton@(x,y) mundo@(mov@(estado,pos),juego,dif,prof,marca,turno,seleccionado,esMaquina) nivel opcion
+cambiaOpcion raton@(x,y) mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, seleccionado, esMaquina, adicional) nivel opcion
     | nivel == 0 = do
-        let nuevoMundo = (mov,juego,traduceDif opcion,traduceProf opcion,marca,turno,seleccionado,esMaquina)
+        let nuevoMundo = (mov,juego,traduceDif opcion,traduceProf opcion,marca,turno,seleccionado,esMaquina,adicional)
         return nuevoMundo
     | nivel == 1 = do
-        let nuevoMundo = (mov,juego,dif,prof,opcion,turno,seleccionado,esMaquina)
+        let nuevoMundo = (mov,juego,dif,prof,opcion,turno,seleccionado,esMaquina,adicional)
         return nuevoMundo
     | nivel == 99 = do
         let ratonCorregido = (x,y-alturaTablero)
@@ -298,9 +258,10 @@ traduceProf dif
   | otherwise = 1
 
 cambiaMiniTablero :: Point -> Mundo -> IO Mundo
-cambiaMiniTablero raton mundo@(mov@(estado,pos),juego,dif,prof,marca,turno,seleccionado,esMaquina)
+cambiaMiniTablero raton mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, seleccionado, esMaquina, adicional)
     | not (null pulsadas) && marca == "R" = do
-        let nuevoMundo = (mov,juego,dif,prof,marca,posAturno (cabeza "cambiaMiniTablero" pulsadas),seleccionado,esMaquina)
+        let nuevoTurno = posAturno (cabeza "cambiaMiniTablero" pulsadas)
+        let nuevoMundo = (mov,juego,dif,prof,marca,nuevoTurno,seleccionado,esMaquina, adicional)
         return nuevoMundo
     | otherwise = return mundo
         where
@@ -311,34 +272,27 @@ cambiaMiniTablero raton mundo@(mov@(estado,pos),juego,dif,prof,marca,turno,selec
 -- -----------------------------------------------------------------------------------------------------------------------
 
 creaTableroConOpciones :: Mundo -> Mundo
-creaTableroConOpciones mundo@(mov@(estado,pos),juego,dif,prof,marca,turno,seleccionado,esMaquina)
-    | marca == "R" = (inicial (turnoApos turno),juego,dif,p,marca,turno,seleccionado,False)
-    | otherwise = (mov,juego,dif,p,"G",turno,seleccionado,True)
+creaTableroConOpciones mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, seleccionado, esMaquina, adicional)
+    | marca == "R" = (inicial (turnoApos turno),juego,dif,p,marca,turno,seleccionado,False,adicional)
+    | otherwise = (mov,juego,dif,p,"G",turno,seleccionado,True,adicional)
         where
             p | prof == 0 = 1 | otherwise = prof
 
 -- -----------------------------------------------------------------------------------------------------------------------
 calculaNuevoEstado :: Point -> Mundo -> IO Mundo
-calculaNuevoEstado casilla mundo@(mov@(estado,pos),juego,dif,prof,marca,turno,seleccionado,esMaquina)
+calculaNuevoEstado casilla mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, seleccionado, esMaquina, adicional)
     | (seleccionado == "R") && (posSeñalada `elem` vaciasRaton) = do
-        let posPosibles = casillasVaciasRaton estado
-        let casillasPosibles = map (matrizPosiciones !) posPosibles
-        let relacion = zip casillasPosibles posPosibles
-        let posNueva = snd $ cabeza "calculaNuevoEstado" $ filter (\(c,p) -> c==casilla) relacion
-        return $ calculaMundo posNueva mundo
-    | (seleccionado `elem` ["G2","G4","G6","G8"]) && (posSeñalada `elem` vaciasGatos) = do
-        let posPosibles = casillasVaciasGatos estado
-        let casillasPosibles = map (matrizPosiciones !) posPosibles
-        let relacion = zip casillasPosibles posPosibles
-        let posNueva = snd $ cabeza "calculaNuevoEstado" $ filter (\(c,p) -> c==casilla) relacion
-        return $ calculaMundo posNueva mundo
+        return $ calculaMundo posSeñalada mundo
+    | (seleccionado `elem` nombresGatos) && (posSeñalada `elem` vaciasGatos) = do
+        return $ calculaMundo posSeñalada mundo
     | (marca == "R") && (el == "R") = do
-        return (mov,juego,dif,prof,marca,turno,el,False)
-    | (marca == "G") && (el `elem` ["G2","G4","G6","G8"]) = do
-        return (mov,juego,dif,prof,marca,turno,el,False)
+        return (mov,juego,dif,prof,marca,turno,el,False,adicional)
+    | (marca == "G") && (el `elem` nombresGatos) = do
+        return (mov,juego,dif,prof,marca,turno,el,False,adicional)
     | otherwise = return mundo
         where
-            vaciasRaton = casillasVaciasRaton estado
+            posRaton = buscaPieza estado "R"
+            vaciasRaton = casillasVaciasRaton estado posRaton
             vaciasGatos = casillasVaciasGatos estado
             t = round tamMatriz
             ps = [(i,j) | i<-[1 .. t], j<-[1 .. t]]
@@ -349,20 +303,21 @@ calculaNuevoEstado casilla mundo@(mov@(estado,pos),juego,dif,prof,marca,turno,se
 
 -- Aux
 calculaMundo :: Pos -> Mundo -> Mundo
-calculaMundo casilla ((estado,pos),juego,dif,prof,marca,turno,seleccionado,esMaquina) = ((nuevoEstado,casilla),juego,dif,prof,marca,turno,"",True)
+calculaMundo casilla ((estado,pos),juego,dif,prof,marca,turno,seleccionado,esMaquina,adicional) = nuevoMundo
     where
         posAntigua = buscaPieza estado seleccionado
         nuevoEstado = intercambiaPieza estado seleccionado casilla posAntigua
+        nuevoMundo = ((nuevoEstado,casilla),juego,dif,prof,marca,turno,"",True,adicional)
 -- -----------------------------------------------------------------------------------------------------------------------
 -- -----------------------------------------------------------------------------------------------------------------------
-pintaMarca :: Pos -> Tablero -> Matrix Point -> Picture
-pintaMarca pos estado posiciones
+pintaMarca :: Pos -> Tablero -> Picture
+pintaMarca pos estado
     | marca == "R" = pintaRaton lugar
-    | marca `elem` ["G2","G4","G6","G8"] = pintaGato lugar
+    | marca `elem` nombresGatos = pintaGato lugar
     | otherwise = blank
         where
             marca = estado ! pos
-            lugar = posiciones ! pos
+            lugar = matrizPosiciones ! pos
 
 -- Aux
 pintaRaton :: Point -> Picture
@@ -441,7 +396,7 @@ uneFilas fi fp = f1 ++ f2 ++ uneFilas ri rp
 pintaMiniMarca :: Pos -> Tablero -> Matrix Point -> Picture
 pintaMiniMarca pos estado posiciones
     | marca == "R" = pintaMiniRaton lugar
-    | marca `elem` ["G2","G4","G6","G8"] = pintaMiniGato lugar
+    | marca `elem` nombresGatos = pintaMiniGato lugar
     | marca == "X" = translate i j casNegra
     | otherwise = blank
         where
