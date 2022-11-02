@@ -136,10 +136,10 @@ alturasEstaticas = [dif, turnos, marcas]
 
 -- -----------------------------------------------------------------------------------------------------------------------
 cambiaOpcion :: Mundo -> Int -> String -> Mundo
-cambiaOpcion mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, seleccionado, esMaquina) nivel opcion
-  | nivel == 0 = (mov, juego, traduceDif opcion, traduceProf opcion, marca, turno, seleccionado, esMaquina)
-  | nivel == 1 = (mov, juego, dif, prof, marca, traduceTurnos opcion, seleccionado, esMaquina)
-  | nivel == 2 = (mov, juego, dif, prof, opcion, turno, seleccionado, esMaquina)
+cambiaOpcion mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, seleccionado, esMaquina, adicional) nivel opcion
+  | nivel == 0 = (mov, juego, traduceDif opcion, traduceProf opcion, marca, turno, seleccionado, esMaquina, adicional)
+  | nivel == 1 = (mov, juego, dif, prof, marca, traduceTurnos opcion, seleccionado, esMaquina, adicional)
+  | nivel == 2 = (mov, juego, dif, prof, opcion, turno, seleccionado, esMaquina, adicional)
   | nivel == 99 = mundo
   | otherwise = error "El nivel de opciones especificado para la función cambiaOpción del 3 en raya no existe."
 
@@ -168,9 +168,9 @@ traduceTurnos turno
 -- -----------------------------------------------------------------------------------------------------------------------
 
 creaTableroConOpciones :: Mundo -> Mundo
-creaTableroConOpciones mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, seleccionado, esMaquina)
-  | turno == 2 = (inicial, juego, dif, p, m, turno, seleccionado, True)
-  | otherwise = (inicial, juego, dif, p, m, turno, seleccionado, False)
+creaTableroConOpciones mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, seleccionado, esMaquina, adicional)
+  | turno == 2 = (inicial, juego, dif, p, m, turno, seleccionado, True, adicional)
+  | otherwise = (inicial, juego, dif, p, m, turno, seleccionado, False, adicional)
     where
       m | marca == "O" || marca == "X" = marca | otherwise = "O"
       p | prof == 0 = 1 | otherwise = prof

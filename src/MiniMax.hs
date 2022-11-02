@@ -93,7 +93,10 @@ iteraPoda (m : ms) prof marcaMaquina juego alfa beta quienJuega = do
       putStrLn "================================================================"
       putStrLn "Alfa y nuevo beta"
       putStrLn $ show alfa ++ "..." ++ show nuevoBeta
-      putStrLn "================================================================" -}
+      putStrLn "================================================================"
+      print "Tableros"
+      print m
+      print tableroPuntuado -}
       return [tabFinal]
     else do
       iteraciones <- iteraPoda ms prof marcaMaquina juego alfa nuevoBeta quienJuega

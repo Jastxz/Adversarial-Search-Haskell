@@ -24,27 +24,22 @@ Funciones de uso de algoritmo
 
 trataDificultad :: Movimiento -> Int -> Int -> String -> IO Movimiento
 trataDificultad m@(t, pos) dif prof marca
-  | dif == 0 = ponAleatorio t marca pos
+  | dif == 0 = ponAleatorio t marca
   | otherwise = usaNegamax m dif prof marca "gato"
 
-ponAleatorio :: Tablero -> String -> Pos -> IO Movimiento
-ponAleatorio t marca p = do
+ponAleatorio :: Tablero -> String -> IO Movimiento
+ponAleatorio t marca = do
   al <- now
   let movimientosPosibles = movsGato t marca
   let limiteValidas = length movimientosPosibles
   let a = mod al limiteValidas
   let mov = movimientosPosibles !! a
   return mov
-  where
-    listaVacios = casillasVacias t
-    limiteValidos = length listaVacios
 
 usaNegamax :: Movimiento -> Int -> Int -> String -> String -> IO Movimiento
 usaNegamax m dif prof marca juego = do
   mejorTablero <- negamax m dif prof marca juego
   let mejorMovimiento = (fst mejorTablero, snd m)
-  {- putStrLn "Mejor puntuación para la máquina en el tablero dado"
-  print mejorMovimiento -}
   return mejorMovimiento
 
 inicializaTableroParaCasoGato :: Int -> IO Movimiento
@@ -58,7 +53,7 @@ Funciones IO para ejecutar el programa con gráficos
 
 {- Funciones de las opciones -}
 pintaOpcionesGato :: Mundo -> IO Picture
-pintaOpcionesGato mundo@(m@(e,p), juego, dif, prof, marca, turno, seleccionado, esMaquina) = do
+pintaOpcionesGato mundo@(m@(e,p), juego, dif, prof, marca, turno, seleccionado, esMaquina,adicional) = do
   let mov | rangos e == (1,1) = inicial (turnoApos turno) | otherwise = m
   -- Valores de separación entre las casillas de las opciones
   let inicioCasillas = fst distribucionOpciones
@@ -90,7 +85,7 @@ pintaOpcionesGato mundo@(m@(e,p), juego, dif, prof, marca, turno, seleccionado, 
   return res
 
 manejaOpcionesGato :: Point -> Mundo -> IO Mundo
-manejaOpcionesGato raton@(x, y) mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, seleccionado, esMaquina) = do
+manejaOpcionesGato raton@(x, y) mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, seleccionado, esMaquina, adicional) = do
   -- Valores de separación entre las casillas de las opciones
   let iC = fst distribucionOpciones
   let eC = snd distribucionOpciones
@@ -104,8 +99,8 @@ manejaOpcionesGato raton@(x, y) mundo@(mov@(estado, pos), juego, dif, prof, marc
   -- Preparamos las variables para el caso de que empiece la máquina en el primer turno
   movMaquina <- inicializaTableroParaCasoGato turno
   -- Cambiamos la información del juego a ejecutar y preparamos el tablero inicial
-  nuevoMundo@(m, j, d, p, ma, t, s, e) <- cambiaOpcion raton mundo indice columna
-  let mundoMaquina = (movMaquina, j, d, p, ma, t, s, e)
+  nuevoMundo@(m, j, d, p, ma, t, s, e, ad) <- cambiaOpcion raton mundo indice columna
+  let mundoMaquina = (movMaquina, j, d, p, ma, t, s, e, ad)
   let mundoAejecutar | comenzar && ma == "R" = creaTableroConOpciones nuevoMundo
         | comenzar && ma /= "R" = creaTableroConOpciones mundoMaquina
         | otherwise = nuevoMundo
@@ -113,7 +108,7 @@ manejaOpcionesGato raton@(x, y) mundo@(mov@(estado, pos), juego, dif, prof, marc
 
 {- Funciones intrínsecas del juego -}
 pintaJuegoGato :: Mundo -> IO Picture
-pintaJuegoGato mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, seleccionado, esMaquina) = do
+pintaJuegoGato mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, seleccionado, esMaquina, adicional) = do
   -- Texto de turno
   let mensajeTurno
         | esMaquina = "Le toca a la máquina"
@@ -127,7 +122,7 @@ pintaJuegoGato mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, selecci
   let tam = round tamMatriz
   let cAjdrz = [1 .. tam]
   let posiciones = [(i, j) | i <- cAjdrz, j <- cAjdrz]
-  let marcasDibujadas = map (\pos -> pintaMarca pos estado matrizPosiciones) posiciones
+  let marcasDibujadas = map (`pintaMarca` estado) posiciones
   let estadoDibujado = pictures marcasDibujadas
   -- Texto indicativo
   let mensajeIndicativo
@@ -140,7 +135,7 @@ pintaJuegoGato mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, selecci
   return res
 
 hazMovimientoGato :: Point -> Mundo -> IO Mundo
-hazMovimientoGato raton mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, seleccionado, esMaquina) = do
+hazMovimientoGato raton mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, seleccionado, esMaquina, adicional) = do
   -- Casillas donde puede haber pulsado el jugador para interaccionar con el juego
   let posCasillas = casillasBlancas
   -- Comprobamos si ha pulsado cerca de alguna casilla para realizar una acción de juego
@@ -149,34 +144,17 @@ hazMovimientoGato raton mundo@(mov@(estado, pos), juego, dif, prof, marca, turno
   if not (null pulsadas)
     then do
       let accion = head pulsadas
-      calculaNuevoEstado accion mundo
+      ((nuevoEstado,p),j,d,pr,ma,tur,se,esM,ad) <- calculaNuevoEstado accion mundo
+      let sel | esEstadoFinal nuevoEstado juego = "humano"
+            | otherwise = se
+      let nuevoMundo = ((nuevoEstado,p),j,d,pr,ma,tur,sel,esM,ad)
+      return nuevoMundo
     else return mundo
 
 {- Función para el turno de la máquina -}
 mueveMaquinaGato :: Mundo -> IO Mundo
-mueveMaquinaGato mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, seleccionado, esMaquina) = do
+mueveMaquinaGato mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, seleccionado, esMaquina, adicional) = do
   let marcaMaquina = marcaDeLaMaquina marca juego
   mn <- trataDificultad mov dif prof marcaMaquina
-  let nuevoMundo = (mn, juego, dif, prof, marca, turno, seleccionado, False)
+  let nuevoMundo = (mn, juego, dif, prof, marca, turno, seleccionado, False, adicional)
   return nuevoMundo
-
-{- +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-Funciones de utilidad para todo el documento
-+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ -}
-
-representaMovimientos :: Movimientos -> IO ()
-representaMovimientos [] = do putStrLn "Fin de la representación de tableros."
-representaMovimientos (t : ts) = do
-  print $ fst t
-  nuevaLinea
-  representaMovimientos ts
-
-revisaIn :: [Pos] -> IO Pos
-revisaIn casillasValidas = do
-  f <- leeDigito "-Primero indica la fila: "
-  c <- leeDigito "-Ahora indica la columna: "
-  if (f, c) `elem` casillasValidas
-    then return (f, c)
-    else do
-      putStrLn "¡La posición señalada no es válida! Inténtelo de nuevo."
-      revisaIn casillasValidas
