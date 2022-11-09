@@ -12,11 +12,12 @@ import Data.List
 import Data.Matrix
 import Graphics.Gloss
 import Graphics.Gloss.Interface.IO.Game
-import FuncionesGato
-import MiniMax
 import Tipos
 import Utiles
 import UtilesGraficos
+import FuncionesGato
+import Interconexion
+import MiniMax
 
 {- +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 Funciones de uso de algoritmo
