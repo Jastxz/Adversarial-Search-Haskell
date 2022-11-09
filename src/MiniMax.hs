@@ -7,6 +7,7 @@ import Data.List
 
 import Tipos
 import Utiles
+import Interconexion
 
 {- +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 Negamax básico

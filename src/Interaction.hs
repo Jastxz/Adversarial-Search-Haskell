@@ -6,12 +6,13 @@ where
 import Data.Matrix
 import Graphics.Gloss
 import Graphics.Gloss.Interface.IO.Game
-import IO3enRaya
-import IOdamas
-import IOgato
 import Tipos
 import Utiles
 import UtilesGraficos
+import Interconexion
+import IO3enRaya
+import IOdamas
+import IOgato
 
 mainInteraction :: IO ()
 mainInteraction = do
@@ -178,7 +179,7 @@ Funciones auxiliares de los gráficos
 
 -- Lista de los juegos aceptados
 listaDeJuegos :: [String]
-listaDeJuegos = ["3 En Raya", "El gato y el raton", "Damas Españolas"]
+listaDeJuegos = ["3 En Raya", "El gato y el raton", "Damas Espanyolas"]
 
 ordenJuegos :: Point
 ordenJuegos = (220.0, -40.0)

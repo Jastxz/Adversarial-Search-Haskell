@@ -13,16 +13,11 @@ module Utiles (
         buscaPieza,
         intercambiaPieza,
         eliminaPieza,
-        movimientosPosibles,
-        esEstadoFinal,
-        puntuaEstado,
         -- Funciones Normales
         cabeza,
         esInt,
         stringToInt,
         listasDePares,
-        siguiente,
-        marcaDeLaMaquina,
         distanciaEuclidea,
         intercambia,
         introduce,
@@ -97,16 +92,12 @@ casillasAlrededorFicha m (f,c) = [(i,j) | i<-filas, j<-columnas, auxiliarCasilla
         columnas = [c-1,c,c+1]
         exluidas = [(f-1,c),(f+1,c),(f,c-1),(f,c+1)]
 
--- Aux
-auxiliarCasillas :: Tablero -> Pos -> Bool
-auxiliarCasillas m pos = dentroDelTablero pos m && casillaVacia m pos
-
 casillasSegundoNivel :: Tablero -> Pos -> [Pos]
-casillasSegundoNivel m (f,c) = [(i,j) | i<-filas, j<-columnas, auxiliarCasillas m (i,j) && (i,j) `notElem` exluidas]
+casillasSegundoNivel m (f,c) = [(i,j) | i<-filas, j<-columnas, auxiliarCasillas m (i,j) && (i,j) `notElem` excluidas]
     where
         filas = [f-2,f,f+2]
         columnas = [c-2,c,c+2]
-        exluidas = [(f-2,c),(f+2,c),(f,c-2),(f,c+2)]
+        excluidas = [(f-2,c),(f+2,c),(f,c-2),(f,c+2)]
 
 buscaPieza :: Tablero -> String -> Pos
 buscaPieza m pieza
@@ -121,24 +112,6 @@ intercambiaPieza t pieza posNueva posAntigua = setElem pieza posNueva $ setElem 
 
 eliminaPieza :: Tablero -> Pos -> Tablero
 eliminaPieza t p = setElem " " p t
-
-movimientosPosibles :: Tablero -> Int -> String -> String -> Movimientos
-movimientosPosibles estado quienJuega marcaMaquina juego
-    | juego == "3enRaya" = movs3enRaya estado marcaMaquina
-    | juego == "gato" = movsGato estado marcaMaquina
-    | otherwise = error $ "Error en la función movimientosPosibles, el juego especificado no existe. Juego: " ++ show juego
-
-esEstadoFinal :: Tablero -> String -> Bool
-esEstadoFinal t juego
-    | juego == "3enRaya" = fin3enRaya t
-    | juego == "gato" = finGato t
-    | otherwise = False
-
-puntuaEstado :: Tablero -> Pos -> String -> Double
-puntuaEstado t pos juego
-    | juego == "3enRaya" = puntua3enRaya t pos
-    | juego == "gato" = puntuaGato t pos
-    | otherwise = 0.0
 
 {- +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 Funciones normales en útiles.
@@ -164,15 +137,6 @@ listasDePares lista = par : listasDePares resto
     where
         par = take 2 lista
         resto = drop 2 lista
-
-siguiente :: Int -> Int
-siguiente j = if j == 1 then 2 else 1
-
-marcaDeLaMaquina :: String -> String -> String
-marcaDeLaMaquina marca juego
-    | juego == "3enRaya" = if marca == "X" then "O" else "X"
-    | juego == "gato" = if marca == "R" then "G" else "R"
-    | otherwise = " "
 
 distanciaEuclidea :: Float -> Float -> Float
 distanciaEuclidea a b = sqrt $ (a - b)**2
@@ -230,120 +194,8 @@ sacaPuntuacionesDeIO (p:ps) = do
     return puntuaciones
 
 {- +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-Funciones privadas del módulo que son auxiliares de otras.
+Funciones auxiliares
 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ -}
 
-movs3enRaya :: Tablero -> String -> Movimientos
-movs3enRaya t marcaMaquina = zip tableros listaVacias
-    where
-        listaVacias = casillasVacias t
-        tableros = map (\pos -> setElem marcaMaquina pos t) listaVacias
-
-fin3enRaya :: Tablero -> Bool
-fin3enRaya t = lleno t || hay3EnRaya t
-
-puntua3enRaya :: Tablero -> Pos -> Double
-puntua3enRaya t pos = hay3
-    where
-        hay2 = if hay2EnRaya t pos then 5.0 else 0.0
-        corta3 = if corta3EnRaya t pos then 7.5 else hay2
-        hay3 = if hay3EnRaya t then 10.0 else corta3
-
-casillasVaciasRaton :: Tablero -> Pos -> [Pos]
-casillasVaciasRaton m posRaton = filter (\ c -> (m ! c) == " ") casillasAlrededor
-    where
-        casillasAlrededor = casillasAlrededorFicha m posRaton
-
-movsGato :: Tablero -> String -> Movimientos
-movsGato t marca
-    | marca == "R" = nub $ map (\pos -> (intercambiaPieza t "R" pos posPieza, pos)) (casillasVaciasRaton t posPieza)
-    | otherwise = nub $ mueveGato t posGatos
-        where
-            posPieza = buscaPieza t marca
-            posGatos = [buscaPieza t m | m<-nombresGatos]
-
-finGato :: Tablero -> Bool
-finGato t = ratonEncerrado t posRaton || ratonEscapado t posRaton posGatos
-    where
-        posRaton = buscaPieza t "R"
-        posGatos = [buscaPieza t m | m<-nombresGatos]
-
-ratonEncerrado :: Tablero -> Pos -> Bool
-ratonEncerrado t pos = null (casillasVaciasRaton t pos)
-
-ratonEscapado :: Tablero -> Pos -> [Pos] -> Bool
-ratonEscapado t raton gatos = filaRaton >= filaGato
-    where
-        filaRaton = fst raton
-        filaGato = maximum $ map fst gatos
-
-puntuaGato :: Tablero -> Pos -> Double
-puntuaGato t pos
-    | finGato t = 10.0
-    -- | hayHueco t || casiEncerrado = -10.0
-    | otherwise = 0.0
-
-{- +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-Funciones privadas del módulo que son auxiliares de las auxiliares y, 
-a partir de aquí, auxiliares de forma recursiva si fuera necesario.
-+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ -}
-
-lleno :: Tablero -> Bool
-lleno t = null (casillasVacias t)
-
-hay3EnRaya :: Tablero -> Bool
-hay3EnRaya t = not (null fsx) || not (null csx) || not (null dsx)
-    where
-        fs = toLists t
-        cs = columnasMatriz t
-        ds = diagonalesMatriz t
-        tripleX = takeWhile (=="X")
-        tripleO = takeWhile (=="O")
-        fsx = filter (\f -> length (tripleX f) == 3 || length (tripleO f) == 3) fs
-        csx = filter (\c -> length (tripleX c) == 3 || length (tripleO c) == 3) cs
-        dsx = filter (\d -> length (tripleX d) == 3 || length (tripleO d) == 3) ds
-
-corta3EnRaya :: Tablero -> Pos -> Bool
-corta3EnRaya t pos = not (null fsx) || not (null csx) || not (null dsx)
-    where
-        fs = toLists t
-        cs = columnasMatriz t
-        ds = diagonalesMatriz t
-        marcaMaq = t ! pos
-        marcaHum = marcaDeLaMaquina marcaMaq "3enRaya"
-        fsx = filter (\f -> elem marcaMaq f && 2 == length [x | x<-f, x==marcaHum]) fs
-        csx = filter (\c -> elem marcaMaq c && 2 == length [x | x<-c, x==marcaHum]) cs
-        dsx = filter (\d -> elem marcaMaq d && 2 == length [x | x<-d, x==marcaHum]) ds
-
-hay2EnRaya :: Tablero -> Pos -> Bool
-hay2EnRaya t pos = not (null fsx) || not (null csx) || not (null dsx)
-    where
-        fs = toLists t
-        cs = columnasMatriz t
-        ds = diagonalesMatriz t
-        marcaMaq = t ! pos
-        marcaHum = marcaDeLaMaquina marcaMaq "3enRaya"
-        fsx = filter (\f -> notElem marcaHum f && 2 == length [x | x<-f, x==marcaMaq]) fs
-        csx = filter (\c -> notElem marcaHum c && 2 == length [x | x<-c, x==marcaMaq]) cs
-        dsx = filter (\d -> notElem marcaHum d && 2 == length [x | x<-d, x==marcaMaq]) ds
-
-posicionesInicialesGatos = [(8,2),(8,4),(8,6),(8,8)]
-nombresGatos = ["G2","G4","G6","G8"]
-
-casillasValidasGatos :: Tablero -> Pos -> [Pos]
-casillasValidasGatos m pos@(f,c) = filter (\(i,j) -> i < f) casillasAlrededor
-    where
-        casillasAlrededor = casillasAlrededorFicha m pos
-
-mueveGato :: Tablero -> [Pos] -> Movimientos
-mueveGato _ [] = []
-mueveGato t (g:gs) = movimientosDelGato ++ mueveGato t gs
-        where
-            validas = casillasValidasGatos t g
-            nombre = t ! g
-            movimientosDelGato = map (\v -> (intercambiaPieza t nombre v g, v)) validas
-
-{- hayHueco :: Tablero -> Bool
-hayHueco t  -}
-
--- casiEncerrado :: Tablero -> Bool
+auxiliarCasillas :: Tablero -> Pos -> Bool
+auxiliarCasillas m pos = dentroDelTablero pos m && casillaVacia m pos

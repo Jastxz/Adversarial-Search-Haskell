@@ -10,13 +10,14 @@ where
 
 import Data.List
 import Data.Matrix
-import Funciones3enRaya
 import Graphics.Gloss
 import Graphics.Gloss.Interface.IO.Game
-import MiniMax
 import Tipos
 import Utiles
 import UtilesGraficos
+import Funciones3enRaya
+import Interconexion
+import MiniMax
 
 {- +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 Funciones de uso de algoritmo

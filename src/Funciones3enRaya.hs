@@ -1,11 +1,12 @@
 module Funciones3enRaya
   ( -- Funciones normales
     inicial,
-    finalizado,
+    fin3enRaya,
     lleno,
     hay3EnRaya,
-    -- Funciones escritura
-    escribeTablero,
+    movs3enRaya,
+    puntua3enRaya,
+    marcaMaquina3enRaya,
     -- Funciones gráficas
     tamMatriz,
     tamTablero,
@@ -33,14 +34,16 @@ import Tipos
 import Utiles
 import UtilesGraficos
 
+-- Inicialización
 inicial :: Movimiento
 inicial = (t, pos)
   where
     t = matrix 3 3 $ \(i, j) -> " "
     pos = (1, 1)
 
-finalizado :: Tablero -> Bool
-finalizado t = lleno t || hay3EnRaya t
+-- Fin de partida
+fin3enRaya :: Tablero -> Bool
+fin3enRaya t = lleno t || hay3EnRaya t
 
 lleno :: Tablero -> Bool
 lleno t = null (casillasVacias t)
@@ -51,35 +54,32 @@ hay3EnRaya t = not (null fsx) || not (null csx) || not (null dsx)
     fs = toLists t
     cs = columnasMatriz t
     ds = diagonalesMatriz t
-    tripleX = ["X", "X", "X"]
-    tripleO = ["O", "O", "O"]
-    fsx = filter (\f -> f == tripleX || f == tripleO) fs
-    csx = filter (\c -> c == tripleX || c == tripleO) cs
-    dsx = filter (\d -> d == tripleX || d == tripleO) ds
+    tripleX = takeWhile (== "X")
+    tripleO = takeWhile (== "O")
+    fsx = filter (\f -> length (tripleX f) == 3 || length (tripleO f) == 3) fs
+    csx = filter (\c -> length (tripleX c) == 3 || length (tripleO c) == 3) cs
+    dsx = filter (\d -> length (tripleX d) == 3 || length (tripleO d) == 3) ds
 
-{- +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-Funciones que tienen que ver con la escritura y lectura en consola.
-+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ -}
-
-escribeTablero :: [String] -> String
-escribeTablero [] = []
-escribeTablero (xs : xss) = (escribeFila xs ++ "\n" ++ guiones ++ "\n") ++ escribeTablero xss
+-- Movimientos
+movs3enRaya :: Tablero -> String -> Movimientos
+movs3enRaya t marcaMaquina = zip tableros listaVacias
   where
-    guiones = escribeGuiones (length xs)
+    listaVacias = casillasVacias t
+    tableros = map (\pos -> setElem marcaMaquina pos t) listaVacias
 
-escribeFila :: [Char] -> String
-escribeFila [] = []
-escribeFila (x : xs) = " " ++ (x : " |") ++ escribeFila xs
-
-escribeGuiones :: Int -> String
-escribeGuiones n
-  | n == 0 = []
-  | otherwise = "----" ++ escribeGuiones (n -1)
+-- Puntuaciones
+puntua3enRaya :: Tablero -> Pos -> Double
+puntua3enRaya t pos = hay3
+  where
+    hay2 = if hay2EnRaya t pos then 5.0 else 0.0
+    corta3 = if corta3EnRaya t pos then 7.5 else hay2
+    hay3 = if hay3EnRaya t then 10.0 else corta3
 
 {- +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-Funciones auxiliares para los gráficos
+Funciones para los gráficos
 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ -}
 
+-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Parámetros %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 tamMatriz :: Float
 tamMatriz = 3.0
 
@@ -96,29 +96,10 @@ ajusteInicial :: Float
 ajusteInicial = ancho / tamMatriz
 
 ajusteInicialMenu :: Float
-ajusteInicialMenu = ancho / (2*tamMatriz)
-
-listaPosiciones :: [Point]
-listaPosiciones = [(x, y) | y <- [a, a - d .. (- a)], x <- [a, a - d .. (- a)]]
-  where
-    a = ancho - ajusteInicial
-    d = diferenciaParaCasillas
-
-matrizPosiciones :: Matrix Point
-matrizPosiciones = matrix t t $ \p -> fst (head (filter (\(num, pos) -> pos == p) relacion))
-  where
-    t = round tamMatriz
-    ps = [(i, j) | i <- [1 .. t], j <- [1 .. t]]
-    relacion = zip listaPosiciones ps
+ajusteInicialMenu = ancho / (2 * tamMatriz)
 
 distribucionOpciones :: Point
 distribucionOpciones = (-450.0, 130.0)
-
-alturasCasillas :: [Float]
-alturasCasillas = [a, a - diferencia .. (- a)]
-  where
-    a = ancho - ajusteInicialMenu
-    diferencia = a / 4.5
 
 infoEstatica :: [[String]]
 infoEstatica = [dif, turnos, marcas]
@@ -134,7 +115,35 @@ alturasEstaticas = [dif, turnos, marcas]
     turnos = alturasCasillas !! 5
     marcas = alturasCasillas !! 8
 
--- -----------------------------------------------------------------------------------------------------------------------
+posBoton :: (Float, Float)
+posBoton = (ancho - ajusteInicial, (- ancho) + ajusteInicial)
+
+anchoBoton :: Float
+anchoBoton = 130.0
+
+altoBoton :: Float
+altoBoton = 40.0
+-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Fin parámetros %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+listaPosiciones :: [Point]
+listaPosiciones = [(x, y) | y <- [a, a - d .. (- a)], x <- [a, a - d .. (- a)]]
+  where
+    a = ancho - ajusteInicial
+    d = diferenciaParaCasillas
+
+matrizPosiciones :: Matrix Point
+matrizPosiciones = matrix t t $ \p -> fst (head (filter (\(num, pos) -> pos == p) relacion))
+  where
+    t = round tamMatriz
+    ps = [(i, j) | i <- [1 .. t], j <- [1 .. t]]
+    relacion = zip listaPosiciones ps
+
+alturasCasillas :: [Float]
+alturasCasillas = [a, a - diferencia .. (- a)]
+  where
+    a = ancho - ajusteInicialMenu
+    diferencia = a / 4.5
+
 cambiaOpcion :: Mundo -> Int -> String -> Mundo
 cambiaOpcion mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, seleccionado, esMaquina, adicional) nivel opcion
   | nivel == 0 = (mov, juego, traduceDif opcion, traduceProf opcion, marca, turno, seleccionado, esMaquina, adicional)
@@ -143,46 +152,17 @@ cambiaOpcion mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, seleccion
   | nivel == 99 = mundo
   | otherwise = error "El nivel de opciones especificado para la función cambiaOpción del 3 en raya no existe."
 
--- Aux
-traduceDif :: String -> Int
-traduceDif dif
-  | dif == "Mínima" = 1
-  | dif == "Fácil" = 2
-  | dif == "Normal" = 3
-  | dif == "Difícil" = 4
-  | otherwise = 0
-
--- Aux
-traduceProf :: String -> Int
-traduceProf dif
-  | dif == "Aleatoria" = 1
-  | dif == "Mínima" = 1
-  | otherwise = 9
-
--- Aux
-traduceTurnos :: String -> Int
-traduceTurnos turno
-  | turno == "Primero" = 1
-  | otherwise = 2
-
--- -----------------------------------------------------------------------------------------------------------------------
-
 creaTableroConOpciones :: Mundo -> Mundo
 creaTableroConOpciones mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, seleccionado, esMaquina, adicional)
   | turno == 2 = (inicial, juego, dif, p, m, turno, seleccionado, True, adicional)
   | otherwise = (inicial, juego, dif, p, m, turno, seleccionado, False, adicional)
-    where
-      m | marca == "O" || marca == "X" = marca | otherwise = "O"
-      p | prof == 0 = 1 | otherwise = prof
-
-posBoton :: (Float, Float)
-posBoton = (ancho - ajusteInicial, (-ancho) + ajusteInicial)
-
-anchoBoton :: Float
-anchoBoton = 130.0
-
-altoBoton :: Float
-altoBoton = 40.0
+  where
+    m
+      | marca == "O" || marca == "X" = marca
+      | otherwise = "O"
+    p
+      | prof == 0 = 1
+      | otherwise = prof
 
 pintaMarca :: Pos -> Tablero -> Matrix Point -> Picture
 pintaMarca pos estado posiciones
@@ -205,3 +185,53 @@ pintaCirculo :: Point -> Picture
 pintaCirculo (x, y) = translate x y circulo
   where
     circulo = color black $ circle 83.0
+
+{- +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Funciones auxiliares
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ -}
+
+marcaMaquina3enRaya :: String -> String
+marcaMaquina3enRaya marca = if marca == "X" then "O" else "X"
+
+corta3EnRaya :: Tablero -> Pos -> Bool
+corta3EnRaya t pos = not (null fsx) || not (null csx) || not (null dsx)
+  where
+    fs = toLists t
+    cs = columnasMatriz t
+    ds = diagonalesMatriz t
+    marcaMaq = t ! pos
+    marcaHum = marcaMaquina3enRaya marcaMaq
+    fsx = filter (\f -> elem marcaMaq f && 2 == length [x | x <- f, x == marcaHum]) fs
+    csx = filter (\c -> elem marcaMaq c && 2 == length [x | x <- c, x == marcaHum]) cs
+    dsx = filter (\d -> elem marcaMaq d && 2 == length [x | x <- d, x == marcaHum]) ds
+
+hay2EnRaya :: Tablero -> Pos -> Bool
+hay2EnRaya t pos = not (null fsx) || not (null csx) || not (null dsx)
+  where
+    fs = toLists t
+    cs = columnasMatriz t
+    ds = diagonalesMatriz t
+    marcaMaq = t ! pos
+    marcaHum = marcaMaquina3enRaya marcaMaq
+    fsx = filter (\f -> notElem marcaHum f && 2 == length [x | x <- f, x == marcaMaq]) fs
+    csx = filter (\c -> notElem marcaHum c && 2 == length [x | x <- c, x == marcaMaq]) cs
+    dsx = filter (\d -> notElem marcaHum d && 2 == length [x | x <- d, x == marcaMaq]) ds
+
+traduceDif :: String -> Int
+traduceDif dif
+  | dif == "Mínima" = 1
+  | dif == "Fácil" = 2
+  | dif == "Normal" = 3
+  | dif == "Difícil" = 4
+  | otherwise = 0
+
+traduceProf :: String -> Int
+traduceProf dif
+  | dif == "Aleatoria" = 1
+  | dif == "Mínima" = 1
+  | otherwise = 9
+
+traduceTurnos :: String -> Int
+traduceTurnos turno
+  | turno == "Primero" = 1
+  | otherwise = 2
