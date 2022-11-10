@@ -4,6 +4,8 @@ module Interconexion
     puntuaEstado,
     siguiente,
     marcaDeLaMaquina,
+    umbralSegunJuego,
+    margenUtilidadSegunJuego
   )
 where
 
@@ -43,3 +45,17 @@ marcaDeLaMaquina marca juego
     | juego == "gato" = marcaMaquinaGato marca
     | juego == "damas" = marcaMaquinaDamas marca
     | otherwise = " "
+
+umbralSegunJuego :: String -> Double
+umbralSegunJuego juego
+  | juego == "3enRaya" = 5.0
+  | juego == "gato" = -5.0
+  | juego == "damas" = 10.0
+  | otherwise = 0.0
+
+margenUtilidadSegunJuego :: String -> Double
+margenUtilidadSegunJuego juego
+  | juego == "3enRaya" = 0.0
+  | juego == "gato" = 0.5
+  | juego == "damas" = 1.0
+  | otherwise = 0.0

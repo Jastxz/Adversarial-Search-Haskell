@@ -10,14 +10,14 @@ where
 
 import Data.List
 import Data.Matrix
+import FuncionesDamas
 import Graphics.Gloss
 import Graphics.Gloss.Interface.IO.Game
+import Interconexion
+import MiniMax
 import Tipos
 import Utiles
 import UtilesGraficos
-import FuncionesDamas
-import Interconexion
-import MiniMax
 
 {- +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 Funciones de uso de algoritmo
@@ -58,7 +58,8 @@ Funciones IO para ejecutar el programa con gráficos
 {- Funciones de las opciones -}
 pintaOpcionesDamas :: Mundo -> IO Picture
 pintaOpcionesDamas mundo@(m@(e, p), juego, dif, prof, marca, turno, seleccionado, esMaquina, adicional) = do
-  let mov | rangos e == (1, 1) = inicial (turnoApos turno)
+  let mov
+        | rangos e == (1, 1) = inicial (turnoApos turno)
         | otherwise = m
   -- Valores de separación entre las casillas de las opciones
   let inicioCasillas = fst distribucionOpciones
@@ -77,7 +78,8 @@ pintaOpcionesDamas mundo@(m@(e, p), juego, dif, prof, marca, turno, seleccionado
   let marcasPosibles = infoEstatica !! 1
   let marcas = translate 0 (alturasCasillas !! 4) $ pictures $ listaTextos marcasPosibles 'X' inicioCasillas evolucionCasillas False
   let lMarcas = length marcasPosibles
-  let mrc | marca == "B" = 0
+  let mrc
+        | marca == "B" = 0
         | otherwise = 1
   let cbx2 = pictures $ dibujaCheckbox (lMarcas - 1) mrc 'X' inicioCasillas evolucionCasillas
   let checkboxMarcas = translate 0 (alturasCasillas !! 5) cbx2
@@ -96,11 +98,13 @@ manejaOpcionesDamas raton@(x, y) mundo@(mov@(estado, pos), juego, dif, prof, mar
   let eC = snd distribucionOpciones
   -- Buscando la casilla en cuestión
   let indice = minimum [if cercaBox y altura then p else 99 | (altura, p) <- zip alturasEstaticas [0 ..]]
-  let fila | indice == 99 = head infoEstatica
+  let fila
+        | indice == 99 = head infoEstatica
         | otherwise = infoEstatica !! indice
   let limite = length fila
   let indice2 = minimum [if cercaBox x longitud then p else 99 | (longitud, p) <- zip [iC, iC + eC ..] [0 .. (limite - 1)]]
-  let columna | indice == 99 || indice2 == 99 = head fila
+  let columna
+        | indice == 99 || indice2 == 99 = head fila
         | otherwise = fila !! indice2
   let comenzar = pulsaCerca raton posBoton
   -- Cambiamos la información del juego a ejecutar y preparamos el tablero inicial
@@ -113,17 +117,21 @@ manejaOpcionesDamas raton@(x, y) mundo@(mov@(estado, pos), juego, dif, prof, mar
 {- Funciones intrínsecas del juego -}
 pintaJuegoDamas :: Mundo -> IO Picture
 pintaJuegoDamas mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, seleccionado, esMaquina, adicional) = do
+  let alturaMensajes = ancho + 50
   -- Texto de turno
   let mensajeTurno
         | esMaquina = "Le toca a la maquina"
         | otherwise = "Tu turno"
-  let turno = translate 0 300 $ texto mensajeTurno
+  let turno = translate (- correccionPosicion2 ancho) alturaMensajes $ texto mensajeTurno
   -- Dibujo del tablero
   let borde = rectangleWire tamTablero tamTablero
   let casPosible = color green $ rectangleSolid diferenciaParaCasillas diferenciaParaCasillas
-  let cab | null seleccionado = ' ' | otherwise = cabeza "pintaJuegoDamas" seleccionado
+  let cab
+        | null seleccionado = ' '
+        | otherwise = cabeza "pintaJuegoDamas" seleccionado
   let (validasDamas, validasReinas) = casillasDisponiblesParaElJugador mundo
-  let posicionesValidas | cab == 'R' = validasReinas
+  let posicionesValidas
+        | cab == 'R' = validasReinas
         | cab == 'B' || cab == 'N' = validasDamas
         | otherwise = []
   let casillasPosibles = map (matrizPosiciones !) posicionesValidas
@@ -143,7 +151,7 @@ pintaJuegoDamas mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, selecc
         | seleccionado /= "" && null posicionesValidas = "No puede mover esta ficha si hay otra que puede atacar"
         | seleccionado /= "" = "Pulse en una casilla vacia valida para mover la ficha"
         | otherwise = "Pulse en una ficha para seleccionarla"
-  let indicacion = translate 0 (-300) $ texto mensajeIndicativo
+  let indicacion = translate (- correccionPosicion (1.25 * tamTablero)) (- alturaMensajes) $ texto mensajeIndicativo
   -- Resultado
   let res = pictures [turno, borde, cuadradosDibujados, estadoDibujado, indicacion]
   return res
@@ -165,6 +173,19 @@ hazMovimientoDamas raton mundo@(mov@(estado, pos), juego, dif, prof, marca, turn
 mueveMaquinaDamas :: Mundo -> IO Mundo
 mueveMaquinaDamas mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, seleccionado, esMaquina, adicional) = do
   let marcaMaquina = marcaDeLaMaquina marca juego
-  mn <- trataDificultad mov dif prof marcaMaquina
-  let nuevoMundo = (mn, juego, dif, prof, marca, turno, seleccionado, False, adicional)
+  mn@(e, _) <- trataDificultad mov dif prof marcaMaquina
+  let vivas = piezasVivas e
+  let deLaMaquina | marcaMaquina == "B" = cabeza "mueveMaquinaDamas" vivas ++ (vivas !! 1)
+        | otherwise = (vivas !! 2) ++ (vivas !! 3)
+  let pos = buscaPieza e $ cabeza "mueveMaquinaDamas" deLaMaquina
+  let punt = puntuaDamas e pos
+  let ad
+        | marcaMaquina == "B" && punt > 0 = vivas ++ [["maquina"]]
+        | marcaMaquina == "N" && punt > 0 = vivas ++ [["maquina"]]
+        | marcaMaquina == "B" && punt < 0 = ad ++ [["humano"]]
+        | marcaMaquina == "N" && punt < 0 = ad ++ [["humano"]]
+        | otherwise = vivas ++ [["empate"]]
+  let adic | finDamas e = ad
+        | otherwise = adicional
+  let nuevoMundo = (mn, juego, dif, prof, marca, turno, seleccionado, False, adic)
   return nuevoMundo

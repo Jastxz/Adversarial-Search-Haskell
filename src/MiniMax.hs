@@ -148,17 +148,6 @@ negamaxCompleto = undefined
 {- +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 Auxiliares
 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ -}
-umbralSegunJuego :: String -> Double
-umbralSegunJuego juego
-  | juego == "3enRaya" = 5.0
-  | juego == "gato" = 10.0
-  | otherwise = 0.0
-
-margenUtilidadSegunJuego :: String -> Double
-margenUtilidadSegunJuego juego
-  | juego == "3enRaya" = 0.0
-  | juego == "gato" = 1.0
-  | otherwise = 0.0
 
 evaluaMovimientosParcialmente :: Movimientos -> Int -> Int -> String -> String -> IO Movimientos
 evaluaMovimientosParcialmente [] _ _ _ _ = return []

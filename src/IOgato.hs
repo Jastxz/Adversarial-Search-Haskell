@@ -4,20 +4,20 @@ module IOgato
     manejaOpcionesGato,
     pintaJuegoGato,
     hazMovimientoGato,
-    mueveMaquinaGato
+    mueveMaquinaGato,
   )
 where
 
 import Data.List
 import Data.Matrix
+import FuncionesGato
 import Graphics.Gloss
 import Graphics.Gloss.Interface.IO.Game
+import Interconexion
+import MiniMax
 import Tipos
 import Utiles
 import UtilesGraficos
-import FuncionesGato
-import Interconexion
-import MiniMax
 
 {- +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 Funciones de uso de algoritmo
@@ -54,8 +54,9 @@ Funciones IO para ejecutar el programa con gráficos
 
 {- Funciones de las opciones -}
 pintaOpcionesGato :: Mundo -> IO Picture
-pintaOpcionesGato mundo@(m@(e,p), juego, dif, prof, marca, turno, seleccionado, esMaquina,adicional) = do
-  let mov | rangos e == (1,1) = inicial (turnoApos turno) | otherwise = m
+pintaOpcionesGato mundo@(m@(e, p), juego, dif, prof, marca, turno, seleccionado, esMaquina, adicional) = do
+  let mov | rangos e == (1, 1) = inicial (turnoApos turno)
+        | otherwise = m
   -- Valores de separación entre las casillas de las opciones
   let inicioCasillas = fst distribucionOpciones
   let evolucionCasillas = snd distribucionOpciones
@@ -73,7 +74,8 @@ pintaOpcionesGato mundo@(m@(e,p), juego, dif, prof, marca, turno, seleccionado, 
   let marcasPosibles = infoEstatica !! 1
   let marcas = translate 0 (alturasCasillas !! 4) $ pictures $ listaTextos marcasPosibles 'X' inicioCasillas evolucionCasillas False
   let lMarcas = length marcasPosibles
-  let mrc | marca == "R" = 0 | otherwise = 1
+  let mrc | marca == "R" = 0
+        | otherwise = 1
   let cbx2 = pictures $ dibujaCheckbox (lMarcas - 1) mrc 'X' inicioCasillas evolucionCasillas
   let checkboxMarcas = translate 0 (alturasCasillas !! 5) cbx2
   tableroMostrado <- pintaComienzoTablero mov
@@ -92,17 +94,20 @@ manejaOpcionesGato raton@(x, y) mundo@(mov@(estado, pos), juego, dif, prof, marc
   let eC = snd distribucionOpciones
   -- Buscando la casilla en cuestión
   let indice = minimum [if cercaBox y altura then p else 99 | (altura, p) <- zip alturasEstaticas [0 ..]]
-  let fila | indice == 99 = head infoEstatica | otherwise = infoEstatica !! indice
+  let fila | indice == 99 = head infoEstatica
+        | otherwise = infoEstatica !! indice
   let limite = length fila
   let indice2 = minimum [if cercaBox x longitud then p else 99 | (longitud, p) <- zip [iC, iC + eC ..] [0 .. (limite - 1)]]
-  let columna | indice == 99 || indice2 == 99 = head fila | otherwise =  fila !! indice2
+  let columna | indice == 99 || indice2 == 99 = head fila
+        | otherwise = fila !! indice2
   let comenzar = pulsaCerca raton posBoton
   -- Preparamos las variables para el caso de que empiece la máquina en el primer turno
   movMaquina <- inicializaTableroParaCasoGato turno
   -- Cambiamos la información del juego a ejecutar y preparamos el tablero inicial
   nuevoMundo@(m, j, d, p, ma, t, s, e, ad) <- cambiaOpcion raton mundo indice columna
   let mundoMaquina = (movMaquina, j, d, p, ma, t, s, e, ad)
-  let mundoAejecutar | comenzar && ma == "R" = creaTableroConOpciones nuevoMundo
+  let mundoAejecutar
+        | comenzar && ma == "R" = creaTableroConOpciones nuevoMundo
         | comenzar && ma /= "R" = creaTableroConOpciones mundoMaquina
         | otherwise = nuevoMundo
   return mundoAejecutar
@@ -110,15 +115,27 @@ manejaOpcionesGato raton@(x, y) mundo@(mov@(estado, pos), juego, dif, prof, marc
 {- Funciones intrínsecas del juego -}
 pintaJuegoGato :: Mundo -> IO Picture
 pintaJuegoGato mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, seleccionado, esMaquina, adicional) = do
+  let alturaMensajes = ancho + 50
   -- Texto de turno
   let mensajeTurno
         | esMaquina = "Le toca a la máquina"
         | otherwise = "Tu turno"
-  let turno = translate 0 300 $ texto mensajeTurno
+  let turno = translate (- correccionPosicion2 ancho) alturaMensajes $ texto mensajeTurno
   -- Dibujo del tablero
   let borde = rectangleWire tamTablero tamTablero
+  let casPosible = color green $ rectangleSolid diferenciaParaCasillas diferenciaParaCasillas
+  let posRaton = buscaPieza estado "R"
+  let vaciasRaton = casillasVaciasRaton estado posRaton
+  let vaciasGatos = casillasVaciasGatos estado
+  let posicionesValidas
+        | seleccionado == "R" = vaciasRaton
+        | seleccionado `elem` nombresGatos = vaciasGatos
+        | otherwise = []
+  let casillasPosibles = map (matrizPosiciones !) posicionesValidas
+  let csPosibles = pictures [translate i j casPosible | (i, j) <- casillasPosibles]
   let casNegra = color marron $ rectangleSolid diferenciaParaCasillas diferenciaParaCasillas
-  let cuadradosDibujados = pictures [translate i j casNegra | (i, j) <- casillasNegras]
+  let csNegras = pictures [translate i j casNegra | (i, j) <- casillasNegras]
+  let cuadradosDibujados = pictures [csNegras, csPosibles]
   -- Dibujo del estado
   let tam = round tamMatriz
   let cAjdrz = [1 .. tam]
@@ -130,7 +147,7 @@ pintaJuegoGato mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, selecci
         | esMaquina = "Espere un momento..."
         | seleccionado /= "" = "Pulse en una casilla vacía válida para mover la ficha"
         | otherwise = "Pulse en una ficha para seleccionarla"
-  let indicacion = translate 0 (-300) $ texto mensajeIndicativo
+  let indicacion = translate (- correccionPosicion (1.25 * tamTablero)) (- alturaMensajes) $ texto mensajeIndicativo
   -- Resultado
   let res = pictures [turno, borde, cuadradosDibujados, estadoDibujado, indicacion]
   return res
@@ -145,17 +162,19 @@ hazMovimientoGato raton mundo@(mov@(estado, pos), juego, dif, prof, marca, turno
   if not (null pulsadas)
     then do
       let accion = head pulsadas
-      ((nuevoEstado,p),j,d,pr,ma,tur,se,esM,ad) <- calculaNuevoEstado accion mundo
-      let sel | esEstadoFinal nuevoEstado juego = "humano"
-            | otherwise = se
-      let nuevoMundo = ((nuevoEstado,p),j,d,pr,ma,tur,sel,esM,ad)
-      return nuevoMundo
+      calculaNuevoEstado accion mundo
     else return mundo
 
 {- Función para el turno de la máquina -}
 mueveMaquinaGato :: Mundo -> IO Mundo
 mueveMaquinaGato mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, seleccionado, esMaquina, adicional) = do
   let marcaMaquina = marcaDeLaMaquina marca juego
-  mn <- trataDificultad mov dif prof marcaMaquina
-  let nuevoMundo = (mn, juego, dif, prof, marca, turno, seleccionado, False, adicional)
+  mn@(e,p) <- trataDificultad mov dif prof marcaMaquina
+  let posRaton = buscaPieza e "R"
+  let posGatos = [buscaPieza e m | m <- nombresGatos]
+  let ad
+        | (marcaMaquina == "R") && ratonEscapado e posRaton posGatos = [["maquina"]]
+        | (marcaMaquina `elem` nombresGatos) && ratonEncerrado e posRaton = [["maquina"]]
+        | otherwise = adicional
+  let nuevoMundo = (mn, juego, dif, prof, marca, turno, seleccionado, False, ad)
   return nuevoMundo

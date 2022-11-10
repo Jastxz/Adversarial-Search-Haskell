@@ -9,6 +9,7 @@ module Utiles (
         casillaVacia,
         casillasVacias,
         casillasAlrededorFicha,
+        fichasAlrededorCasilla,
         casillasSegundoNivel,
         buscaPieza,
         intercambiaPieza,
@@ -87,6 +88,13 @@ casillasVacias m = filter (casillaVacia m) casillas
 
 casillasAlrededorFicha :: Tablero -> Pos -> [Pos]
 casillasAlrededorFicha m (f,c) = [(i,j) | i<-filas, j<-columnas, auxiliarCasillas m (i,j) && (i,j) `notElem` exluidas]
+    where
+        filas = [f-1,f,f+1]
+        columnas = [c-1,c,c+1]
+        exluidas = [(f-1,c),(f+1,c),(f,c-1),(f,c+1)]
+
+fichasAlrededorCasilla :: Tablero -> Pos -> [Pos]
+fichasAlrededorCasilla m (f,c) = [(i,j) | i<-filas, j<-columnas, auxiliarFichas m (i,j) && (i,j) `notElem` exluidas]
     where
         filas = [f-1,f,f+1]
         columnas = [c-1,c,c+1]
@@ -199,3 +207,6 @@ Funciones auxiliares
 
 auxiliarCasillas :: Tablero -> Pos -> Bool
 auxiliarCasillas m pos = dentroDelTablero pos m && casillaVacia m pos
+
+auxiliarFichas :: Tablero -> Pos -> Bool
+auxiliarFichas m pos = dentroDelTablero pos m && not (casillaVacia m pos)

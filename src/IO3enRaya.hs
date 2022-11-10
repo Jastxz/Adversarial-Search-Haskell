@@ -160,10 +160,10 @@ hazMovimiento3enRaya raton mundo@(mov@(estado, pos), juego, dif, prof, marca, tu
       let relacion = zip (toList matrizPosiciones) posPosibles
       let posNueva = snd $ head $ filter (\(c, p) -> c == accion) relacion
       let nuevoEstado = setElem marca posNueva estado
-      let sel | lleno nuevoEstado && not (hay3EnRaya nuevoEstado) = "empate"
-            | esEstadoFinal nuevoEstado juego = "humano"
-            | otherwise = ""
-      return ((nuevoEstado, posNueva), juego, dif, prof, marca, turno, sel, True, adicional)
+      let ad | lleno nuevoEstado && not (hay3EnRaya nuevoEstado) = [["empate"]]
+            | hay3EnRaya nuevoEstado = [["humano"]]
+            | otherwise = ad
+      return ((nuevoEstado, posNueva), juego, dif, prof, marca, turno, seleccionado, True, ad)
     else return mundo
 
 {- Función para el turno de la máquina -}
@@ -171,7 +171,8 @@ mueveMaquina3enRaya :: Mundo -> IO Mundo
 mueveMaquina3enRaya mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, seleccionado, esMaquina, adicional) = do
   let marcaMaquina = marcaDeLaMaquina marca juego
   mn@(e, p) <- trataDificultad mov dif prof marcaMaquina
-  let sel | lleno e && not (hay3EnRaya e) = "empate"
-        | otherwise = seleccionado
-  let nuevoMundo = (mn, juego, dif, prof, marca, turno, sel, False, adicional)
+  let ad | lleno e && not (hay3EnRaya e) = [["empate"]]
+        | hay3EnRaya e = [["maquina"]]
+        | otherwise = ad
+  let nuevoMundo = (mn, juego, dif, prof, marca, turno, seleccionado, False, ad)
   return nuevoMundo
