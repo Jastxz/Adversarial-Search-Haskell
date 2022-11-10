@@ -8,6 +8,7 @@ module FuncionesDamas
     nombresReinasNegras,
     inicial,
     finDamas,
+    bandoGanador,
     calculaCasillasAtaque,
     casillasValidasDamas,
     casillasValidasReinas,
@@ -79,13 +80,35 @@ añadePiezas actual@(x, y)
 
 -- Fin de partida
 finDamas :: Tablero -> Bool
-finDamas t = (null dB && null rB) || (null dN && null rN)
+finDamas t = (null dB && null rB) || (null dN && null rN) || null mvB || null mvN
   where
     vivas = piezasVivas t
     dB = cabeza "finDamas" vivas
     rB = vivas !! 1
     dN = vivas !! 2
     rN = vivas !! 3
+    mvB = movsDamas t "B"
+    mvN = movsDamas t "N"
+
+bandoGanador :: Tablero -> [[String]] -> Double -> String
+bandoGanador t vivas punt
+  | finNegras = "blancas"
+  | finBlancas = "negras"
+  | otherwise = "empate"
+    where
+      nDB = fromIntegral $ length $ cabeza "bandoGanador" vivas
+      nRB = fromIntegral $ length $ vivas !! 1
+      nDN = fromIntegral $ length $ vivas !! 2
+      nRN = fromIntegral $ length $ vivas !! 3
+      mvB = movsDamas t "B"
+      mvN = movsDamas t "N"
+      hayBlancas = nDB > 0.0 && nRB > 0.0
+      noHayBlancas = nDB == 0.0 && nRB == 0.0
+      hayNegras = nDN > 0.0 && nRN > 0.0
+      noHayNegras = nDN == 0.0 && nRN == 0.0
+      noHayMovimientos = null mvB || null mvN
+      finBlancas = (noHayBlancas && hayNegras) || (noHayMovimientos && punt > 0)
+      finNegras = (noHayNegras && hayBlancas) || (noHayMovimientos && punt > 0)
 
 -- Movimientos
 casillasValidasDamas :: Tablero -> Pos -> ([Pos], Bool)
@@ -159,10 +182,12 @@ revisaDiagonal m p@(f, c) lims@(a, b) pieza (ps, at)
     diferenciaColumna = c - b
     filaE
       | diferenciaFila < 0 = f + 1
-      | otherwise = f - 1
+      | diferenciaFila > 0 = f - 1
+      | otherwise = 0
     columnaE
       | diferenciaColumna < 0 = c + 1
-      | otherwise = c - 1
+      | diferenciaColumna > 0 = c - 1
+      | otherwise = 0
     pos = (filaE, columnaE)
     ataca = bandoContrario && dentroDelTablero pos m && casillaVacia m pos
     pAtacadas
@@ -279,9 +304,29 @@ ataque og@(x, y) atacada@(i, j) reina = (pos, ataca)
 
 -- Puntuaciones
 puntuaDamas :: Tablero -> Pos -> Double
-puntuaDamas t pos
-  | finDamas t = 10.0
-  | otherwise = 0.0
+puntuaDamas t pos = puntuacionFinal + puntuacionGanar
+  where
+    -- Necesitamos saber 2 cosas, cuantas piezas hay de cada bando y a cuál pertenecemos
+    pieza = t ! pos
+    bandoActual = bando pieza
+    vivas = piezasVivas t
+    nDB = fromIntegral $ length $ cabeza "puntuaDamas" vivas
+    nRB = fromIntegral $ length $ vivas !! 1
+    nDN = fromIntegral $ length $ vivas !! 2
+    nRN = fromIntegral $ length $ vivas !! 3
+    esBlanco = bandoActual == 'B'
+    esNegro = bandoActual == 'N'
+    puntuacionBlancas | esBlanco = 2.5 * nRB + nDB
+      | esNegro = - (2.5 * nRB + nDB)
+      | otherwise = 0.0
+    puntuacionNegras | esNegro = 2.5 * nRN + nDN
+      | esBlanco = - (2.5 * nRN + nDN)
+      | otherwise = 0.0
+    puntuacionFinal = puntuacionBlancas + puntuacionNegras
+    ganador = bandoGanador t vivas puntuacionFinal
+    hasGanado = (esBlanco && ganador == "blancas") || (esNegro && ganador == "negras")
+    puntuacionGanar | hasGanado = 30.0
+      | otherwise = 0.0
 
 {- +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 Funciones para los gráficos
@@ -503,10 +548,12 @@ revisaDiagonalio m p@(f, c) lims@(a, b) pieza (ps, at)
     diferenciaColumna = c - b
     filaE
       | diferenciaFila < 0 = f + 1
-      | otherwise = f - 1
+      | diferenciaFila > 0 = f - 1
+      | otherwise = 0
     columnaE
       | diferenciaColumna < 0 = c + 1
-      | otherwise = c - 1
+      | diferenciaColumna > 0 = c - 1
+      | otherwise = 0
     pos = (filaE, columnaE)
     ataca = bandoContrario && dentroDelTablero pos m && casillaVacia m pos
     pAtacadas
@@ -531,7 +578,14 @@ calculaMundo casilla ((estado, pos), juego, dif, prof, marca, turno, seleccionad
         | otherwise = nuevoNombre
   let tocaMaquina = null casillasAtaque || not ataca
   let ad = piezasVivas nuevoEstado
-  let nuevoMundo = ((nuevoEstado, casilla), juego, dif, prof, marca, turno, sel, tocaMaquina, ad)
+  let punt = puntuaDamas nuevoEstado casilla
+  let ad' | marca == "B" && punt > 0 = ad ++ [["humano"]]
+        | marca == "N" && punt > 0 = ad ++ [["humano"]]
+        | marca == "B" && punt < 0 = ad ++ [["maquina"]]
+        | marca == "N" && punt < 0 = ad ++ [["maquina"]]
+        | otherwise = ad ++ [["empate"]]
+  let ad'' | finDamas nuevoEstado = ad' | otherwise = ad
+  let nuevoMundo = ((nuevoEstado, casilla), juego, dif, prof, marca, turno, sel, tocaMaquina, ad'')
   return nuevoMundo
 
 pintaMarca :: Pos -> Tablero -> Picture
@@ -641,9 +695,9 @@ traduceDif dif
 traduceProf :: String -> Int
 traduceProf dif
   | dif == "Mínima" = 1
-  | dif == "Fácil" = 7
-  | dif == "Normal" = 8
-  | dif == "Difícil" = 10
+  | dif == "Fácil" = 2
+  | dif == "Normal" = 4
+  | dif == "Difícil" = 4
   | otherwise = 1
 
 pintaBlanca :: Point -> Picture
