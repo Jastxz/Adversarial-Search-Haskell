@@ -4,10 +4,9 @@ module MiniMax
 where
 
 import Data.List
-
+import Interconexion
 import Tipos
 import Utiles
-import Interconexion
 
 {- +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 Negamax básico
@@ -15,8 +14,8 @@ Negamax básico
 negamax :: Movimiento -> Int -> Int -> String -> String -> IO TableroPuntuado
 negamax mov dificultad profundidad marcaMaquina juego
   -- Según la dificultad escogemos el estilo del negamax
-  | dificultad == 3 = negamaxConPoda mov profundidad marcaMaquina juego puntuacion (-puntuacion) 2
-  | dificultad >= 4 = negamaxCompleto mov profundidad marcaMaquina juego puntuacion (-puntuacion) 2
+  | dificultad == 3 = negamaxConPoda mov profundidad marcaMaquina juego puntuacion (- puntuacion) 2
+  | dificultad >= 4 = negamaxCompleto mov profundidad marcaMaquina juego puntuacion (- puntuacion) 2
   | otherwise = do
     iteraNegamax mov profundidad marcaMaquina juego puntuacion 2
   where
@@ -35,7 +34,8 @@ iteraNegamax (estado, pos) profundidad marcaMaquina juego referencia quienJuega 
       let sig = siguiente quienJuega
       let sigMarca = marcaDeLaMaquina marcaMaquina juego
       iteraciones <- realizaIteraciones movsPosibles (profundidad - 1) sigMarca juego referencia sig
-      let mejor = head iteraciones
+      al <- now
+      let mejor = aleatorio al iteraciones
       return mejor
 
 realizaIteraciones :: Movimientos -> Int -> String -> String -> Double -> Int -> IO TablerosPuntuados
@@ -47,14 +47,17 @@ realizaIteraciones (m : ms) prof marcaMaquina juego referencia quienJuega = do
   let tabFinal = (fst m, valor)
   let mejorReferencia = max referencia valor
   iteraciones <- realizaIteraciones ms prof marcaMaquina juego mejorReferencia quienJuega
+  al <- now
   let tabIteraciones
         | null iteraciones = tabFinal
-        | otherwise = head iteraciones
+        | otherwise = aleatorio al iteraciones
   -- Minimizamos la puntuación del humano
   let mejorTablero
-        | snd tabIteraciones < valor = tabIteraciones
-        | otherwise = tabFinal
-  return [mejorTablero]
+        | snd tabIteraciones < valor = iteraciones
+        | snd tabIteraciones > valor = [tabFinal]
+        | tabFinal == tabIteraciones = [tabFinal]
+        | otherwise = tabFinal : iteraciones
+  return mejorTablero
 
 {- +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 Negamax con poda
@@ -71,12 +74,16 @@ negamaxConPoda (estado, pos) profundidad marcaMaquina juego alfa beta quienJuega
     else do
       let sig = siguiente quienJuega
       let sigMarca = marcaDeLaMaquina marcaMaquina juego
+      prob <- time
       evaluadosParcialmente <- evaluaMovimientosParcialmente movsPosibles profundidad sig sigMarca juego
+      aleatorios <- escogeAleatorios prob movsPosibles
       let movimientosIterar
             | not (null evaluadosParcialmente) && profundidad == 1 = evaluadosParcialmente
+            | not (null aleatorios) = aleatorios
             | otherwise = movsPosibles
       iteraciones <- iteraPoda movimientosIterar (profundidad - 1) sigMarca juego alfa beta sig
-      let mejor = head iteraciones
+      al <- now
+      let mejor = aleatorio al iteraciones
       return mejor
 
 iteraPoda :: Movimientos -> Int -> String -> String -> Double -> Double -> Int -> IO TablerosPuntuados
@@ -89,55 +96,20 @@ iteraPoda (m : ms) prof marcaMaquina juego alfa beta quienJuega = do
   let nuevoBeta = min beta valor
   if alfa > nuevoBeta
     then do
-      {- putStrLn "================================================================"
-      putStrLn "Iteración de iteraPoda"
-      putStrLn "================================================================"
-      putStrLn "Alfa y nuevo beta"
-      putStrLn $ show alfa ++ "..." ++ show nuevoBeta
-      putStrLn "================================================================"
-      print "Tableros"
-      print m
-      print tableroPuntuado -}
       return [tabFinal]
     else do
       iteraciones <- iteraPoda ms prof marcaMaquina juego alfa nuevoBeta quienJuega
+      al <- now
       let tabIteraciones
             | null iteraciones = tabFinal
-            | otherwise = head iteraciones
+            | otherwise = aleatorio al iteraciones
       -- Minimizamos la puntuación del humano
       let mejorTablero
-            | snd tabIteraciones <= nuevoBeta = tabIteraciones
-            | otherwise = tabFinal
-  -- Bloque if para realizar seguimientos y pruebas
-  {- iteraciones <- iteraPoda ms prof marcaMaquina juego alfa nuevoBeta quienJuega
-  let tabIteraciones
-        | null iteraciones = tabFinal
-        | otherwise = head iteraciones
-  -- Minimizamos la puntuación del humano
-  let mejorTablero
-        | snd tabIteraciones <= nuevoBeta = tabIteraciones
-        | otherwise = tabFinal -}
-  {- if prof >= 3
-    then do
-      putStrLn "================================================================"
-      putStrLn "Iteración de iteraPoda"
-      putStrLn "================================================================"
-      putStrLn "Movimiento y su tablero puntuado"
-      print m
-      putStrLn " "
-      print tableroPuntuado
-      putStrLn " "
-      putStrLn "Alfa, Beta, Nuevo beta y mejor valor del resto"
-      putStrLn $ show alfa ++ "..." ++ show beta ++ "..." ++ show nuevoBeta ++ "..." ++ show (snd tabIteraciones)
-      putStrLn " "
-      putStr "Profundidad, marca del turno, v y valor:    "
-      putStrLn $ show prof ++ "..." ++ show marcaMaquina ++ "..." ++ show v ++ "..." ++ show valor
-      putStrLn " "
-      putStrLn "================================================================"
-      return [mejorTablero]
-    else return [mejorTablero] -}
-      return [mejorTablero]
-  -- return [mejorTablero]
+            | snd tabIteraciones < nuevoBeta = iteraciones
+            | snd tabIteraciones > nuevoBeta = [tabFinal]
+            | tabFinal == tabIteraciones = [tabFinal]
+            | otherwise = tabFinal : iteraciones
+      return mejorTablero
 
 {- +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 Negamax completo
@@ -157,11 +129,6 @@ evaluaMovimientosParcialmente (m : ms) prof quienJuega marcaMaquina juego = do
   let umbral = umbralSegunJuego juego
   let margen = margenUtilidadSegunJuego juego
   let alfaConMargen = alfa + margen
-  {- putStrLn ""
-  putStrLn $ "Movimiento original: " ++ show m
-  putStrLn "Movimientos generados con sus puntuaciones: "
-  print $ zip movsPosibles puntuados
-  putStrLn "" -}
   evaluados <- evaluaMovimientosParcialmente ms prof quienJuega marcaMaquina juego
   if (alfaConMargen <= umbral) && (prof == 1) && not (esEstadoFinal estado juego)
     then return evaluados

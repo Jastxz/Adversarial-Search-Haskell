@@ -20,6 +20,9 @@ module Funciones3enRaya
     alturasEstaticas,
     cambiaOpcion,
     creaTableroConOpciones,
+    posCargar,
+    posCargarJuego,
+    posGuardarJuego,
     posBoton,
     anchoBoton,
     altoBoton,
@@ -115,8 +118,17 @@ alturasEstaticas = [dif, turnos, marcas]
     turnos = alturasCasillas !! 5
     marcas = alturasCasillas !! 8
 
-posBoton :: (Float, Float)
-posBoton = (ancho - ajusteInicial, (- ancho) + ajusteInicial)
+posCargar :: Point
+posCargar = (ancho - ajusteInicial/2, - ancho + ajusteInicial)
+
+posCargarJuego :: Point
+posCargarJuego = ((- ancho) - 2*ajusteInicial, 0)
+
+posGuardarJuego :: Point
+posGuardarJuego = (ancho + 2*ajusteInicial, 0)
+
+posBoton :: Point
+posBoton = (ancho - ajusteInicial/2, (- ancho) + 2*ajusteInicial)
 
 anchoBoton :: Float
 anchoBoton = 130.0

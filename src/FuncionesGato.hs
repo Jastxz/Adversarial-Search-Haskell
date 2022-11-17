@@ -30,6 +30,9 @@ module FuncionesGato
     cambiaOpcion,
     creaTableroConOpciones,
     calculaNuevoEstado,
+    posCargar,
+    posCargarJuego,
+    posGuardarJuego,
     posBoton,
     anchoBoton,
     altoBoton,
@@ -140,7 +143,7 @@ puntuaGato t pos = puntuacionEscapado + puntuacionMeta + puntuacionEncerrado + p
       | estaEncerrado && esGatos = 10.0
       | otherwise = 0.0
     puntuacionMeta
-      | esRaton = 1.25 * filaRaton
+      | esRaton = 1.35 * filaRaton
       | esGatos = (-1.25) * filaRaton
       | otherwise = 0.0
     puntuacionRodeado
@@ -201,8 +204,17 @@ alturasEstaticas = [dif, turnosYmarcas]
     dif = alturasCasillas !! 2
     turnosYmarcas = alturasCasillas !! 5
 
-posBoton :: (Float, Float)
-posBoton = (ancho, (- ancho) + ajusteInicial)
+posCargar :: Point
+posCargar = (ancho - ajusteInicial/2, - ancho + ajusteInicial)
+
+posCargarJuego :: Point
+posCargarJuego = ((- ancho) - 4*ajusteInicial, 0)
+
+posGuardarJuego :: Point
+posGuardarJuego = (ancho + 4*ajusteInicial, 0)
+
+posBoton :: Point
+posBoton = (ancho - ajusteInicial/2, (- ancho) + 4*ajusteInicial)
 
 anchoBoton :: Float
 anchoBoton = 130.0
@@ -328,8 +340,10 @@ calculaMundo casilla ((estado, pos), juego, dif, prof, marca, turno, seleccionad
       | seleccionado == "R" = casilla
       | otherwise = buscaPieza nuevoEstado "R"
     posGatos = [buscaPieza nuevoEstado m | m <- nombresGatos]
-    ad | (seleccionado == "R") && ratonEscapado nuevoEstado posRaton posGatos = [["humano"]]
-      | (seleccionado `elem` nombresGatos) && ratonEncerrado nuevoEstado posRaton = [["humano"]]
+    ad | (marca == "R") && ratonEscapado nuevoEstado posRaton posGatos = [["humano"]]
+      | (marca == "G") && ratonEncerrado nuevoEstado posRaton = [["humano"]]
+      | (marca == "G") && ratonEscapado nuevoEstado posRaton posGatos = [["maquina"]]
+      | (marca == "R") && ratonEncerrado nuevoEstado posRaton = [["maquina"]]
       | otherwise = adicional
     nuevoMundo = ((nuevoEstado, casilla), juego, dif, prof, marca, turno, "", True, ad)
 
@@ -406,8 +420,8 @@ traduceDif dif
 traduceProf :: String -> Int
 traduceProf dif
   | dif == "Mínima" = 1
-  | dif == "Fácil" = 7
-  | dif == "Normal" = 8
+  | dif == "Fácil" = 5
+  | dif == "Normal" = 9
   | dif == "Difícil" = 8
   | otherwise = 1
 

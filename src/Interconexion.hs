@@ -50,7 +50,7 @@ umbralSegunJuego :: String -> Double
 umbralSegunJuego juego
   | juego == "3enRaya" = 5.0
   | juego == "gato" = -5.0
-  | juego == "damas" = 10.0
+  | juego == "damas" = 5.0
   | otherwise = 0.0
 
 margenUtilidadSegunJuego :: String -> Double

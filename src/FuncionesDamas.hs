@@ -35,6 +35,9 @@ module FuncionesDamas
     creaTableroConOpciones,
     calculaNuevoEstado,
     casillasDisponiblesParaElJugador,
+    posCargar,
+    posCargarJuego,
+    posGuardarJuego,
     posBoton,
     anchoBoton,
     altoBoton,
@@ -369,8 +372,17 @@ alturasEstaticas = [dif, turnosYmarcas]
     dif = alturasCasillas !! 2
     turnosYmarcas = alturasCasillas !! 5
 
-posBoton :: (Float, Float)
-posBoton = (ancho, (- ancho) + ajusteInicial)
+posCargar :: Point
+posCargar = (ancho - ajusteInicial/2, - ancho + ajusteInicial)
+
+posCargarJuego :: Point
+posCargarJuego = ((- ancho) - 4*ajusteInicial, 0)
+
+posGuardarJuego :: Point
+posGuardarJuego = (ancho + 4*ajusteInicial, 0)
+
+posBoton :: Point
+posBoton = (ancho - ajusteInicial/2, (- ancho) + 4*ajusteInicial)
 
 anchoBoton :: Float
 anchoBoton = 130.0
@@ -696,8 +708,8 @@ traduceProf :: String -> Int
 traduceProf dif
   | dif == "Mínima" = 1
   | dif == "Fácil" = 2
-  | dif == "Normal" = 4
-  | dif == "Difícil" = 4
+  | dif == "Normal" = 6
+  | dif == "Difícil" = 6
   | otherwise = 1
 
 pintaBlanca :: Point -> Picture

@@ -4,6 +4,7 @@ module Utiles (
         numeroElementosMatriz,
         columnasMatriz,
         diagonalesMatriz,
+        tableroVacio,
         valido,
         dentroDelTablero,
         casillaVacia,
@@ -17,16 +18,23 @@ module Utiles (
         -- Funciones Normales
         cabeza,
         esInt,
+        esReal,
         stringToInt,
+        stringToDouble,
+        stringToFloat,
         listasDePares,
         distanciaEuclidea,
         intercambia,
         introduce,
         elimina,
         eliminaElemento,
+        aleatorio,
+        escogeAleatorios,
+        normaliza,
         -- Funciones IO
         nuevaLinea,
         now,
+        time,
         leeDigito,
         sacaPuntuacionesDeIO
     ) where
@@ -61,6 +69,12 @@ diagonalPMatriz n m = [m ! (x,x) | x<-[1..n]]
 
 diagonalSMatriz :: Int -> Matrix a -> [a]
 diagonalSMatriz n m = [m ! (x,n-x+1) | x<-[1..n]]
+
+tableroVacio :: String -> Movimiento
+tableroVacio nombre = (tab, pos)
+  where
+    tab = matrix 1 1 $ \(i, j) -> nombre
+    pos = (1, 1)
 
 valido :: Pos -> Tablero -> Bool
 valido pos m = (v==" ") && dentroDelTablero pos m
@@ -133,11 +147,40 @@ cabeza funcion lista
 esInt :: String -> Bool
 esInt = foldr ((&&) . isDigit) True
 
+esReal :: String -> Bool
+esReal s
+    | esInt entera && esInt fraccionaria = True
+    | otherwise = False
+        where
+            entera = takeWhile (/='.') s
+            f = dropWhile (/='.') s
+            fraccionaria = if null f then "" else tail f
+
 stringToInt :: String -> Int
 stringToInt [] = 0
 stringToInt c@(s:ss)
     | s == '-' = (-1)*stringToInt ss
     | otherwise = (digitToInt s * 10^(length c - 1)) + stringToInt ss
+
+stringToDouble :: String -> Double
+stringToDouble [] = 0.0
+stringToDouble s = entera + fraccionaria
+    where
+        e = stringToInt $ takeWhile (/='.') s
+        entera = fromInteger $ toInteger e
+        f = tail $ dropWhile (/='.') s
+        fracEnt = fromInteger $ toInteger $ stringToInt f
+        fraccionaria = fracEnt / (10^length f)
+
+stringToFloat :: String -> Float
+stringToFloat [] = 0.0
+stringToFloat s = entera + fraccionaria
+    where
+        e = stringToInt $ takeWhile (/='.') s
+        entera = fromInteger $ toInteger e
+        f = tail $ dropWhile (/='.') s
+        fracEnt = fromInteger $ toInteger $ stringToInt f
+        fraccionaria = fracEnt / (10^length f)
 
 listasDePares :: [a] -> [[a]]
 listasDePares [] = []
@@ -173,6 +216,29 @@ eliminaElemento (x:xs) a
     | null xs = [x]
     | otherwise = x : eliminaElemento xs a
 
+aleatorio :: Int -> [a] -> a
+aleatorio al xs
+    | null xs = error "Lista vacia en funcion aleatorio"
+    | otherwise = x
+    where
+        limite = length xs
+        a = mod al limite
+        x = xs !! a
+
+escogeAleatorios :: Double -> [a] -> IO [a]
+escogeAleatorios _ [] = return []
+escogeAleatorios al (x:xs) = do
+    let prob = normaliza al
+    tiempo <- time
+    let contra = normaliza tiempo
+    resto <- escogeAleatorios al xs
+    if contra > prob
+        then return $ x : resto
+        else return resto
+
+normaliza :: Double -> Double
+normaliza d = d - fromIntegral (floor d)
+
 {- +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 Funciones de IO en útiles.
 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ -}
@@ -182,6 +248,9 @@ nuevaLinea = do putStrLn ""
 
 now :: IO Int
 now = getCurrentTime Data.Functor.<&> (floor . fromRational . toRational . utctDayTime)
+
+time :: IO Double
+time = getCurrentTime Data.Functor.<&> (fromRational . toRational . utctDayTime)
 
 leeDigito :: String -> IO Int
 leeDigito c = do
