@@ -35,6 +35,9 @@ module FuncionesDamas
     creaTableroConOpciones,
     calculaNuevoEstado,
     casillasDisponiblesParaElJugador,
+    posCargar,
+    posCargarJuego,
+    posGuardarJuego,
     posBoton,
     anchoBoton,
     altoBoton,
@@ -95,20 +98,20 @@ bandoGanador t vivas punt
   | finNegras = "blancas"
   | finBlancas = "negras"
   | otherwise = "empate"
-    where
-      nDB = fromIntegral $ length $ cabeza "bandoGanador" vivas
-      nRB = fromIntegral $ length $ vivas !! 1
-      nDN = fromIntegral $ length $ vivas !! 2
-      nRN = fromIntegral $ length $ vivas !! 3
-      mvB = movsDamas t "B"
-      mvN = movsDamas t "N"
-      hayBlancas = nDB > 0.0 && nRB > 0.0
-      noHayBlancas = nDB == 0.0 && nRB == 0.0
-      hayNegras = nDN > 0.0 && nRN > 0.0
-      noHayNegras = nDN == 0.0 && nRN == 0.0
-      noHayMovimientos = null mvB || null mvN
-      finBlancas = (noHayBlancas && hayNegras) || (noHayMovimientos && punt > 0)
-      finNegras = (noHayNegras && hayBlancas) || (noHayMovimientos && punt > 0)
+  where
+    nDB = fromIntegral $ length $ cabeza "bandoGanador" vivas
+    nRB = fromIntegral $ length $ vivas !! 1
+    nDN = fromIntegral $ length $ vivas !! 2
+    nRN = fromIntegral $ length $ vivas !! 3
+    mvB = movsDamas t "B"
+    mvN = movsDamas t "N"
+    hayBlancas = nDB > 0.0 && nRB > 0.0
+    noHayBlancas = nDB == 0.0 && nRB == 0.0
+    hayNegras = nDN > 0.0 && nRN > 0.0
+    noHayNegras = nDN == 0.0 && nRN == 0.0
+    noHayMovimientos = null mvB || null mvN
+    finBlancas = (noHayBlancas && hayNegras) || (noHayMovimientos && punt > 0)
+    finNegras = (noHayNegras && hayBlancas) || (noHayMovimientos && punt > 0)
 
 -- Movimientos
 casillasValidasDamas :: Tablero -> Pos -> ([Pos], Bool)
@@ -303,30 +306,49 @@ ataque og@(x, y) atacada@(i, j) reina = (pos, ataca)
       | otherwise = (abs diferenciaFila == 2) || (abs diferenciaColumna == 2)
 
 -- Puntuaciones
-puntuaDamas :: Tablero -> Pos -> Double
-puntuaDamas t pos = puntuacionFinal + puntuacionGanar
+puntuaDamas :: Tablero -> Pos -> IO Double
+puntuaDamas t pos = do
+  -- Necesitamos saber 2 cosas, cuantas piezas hay de cada bando y a cuál pertenecemos
+  let pieza = t ! pos
+  let reina = esReina pieza
+  let bandoActual = bando pieza
+  let vivas = piezasVivas t
+  let nDB = fromIntegral $ length $ cabeza "puntuaDamas" vivas
+  let nRB = fromIntegral $ length $ vivas !! 1
+  let nDN = fromIntegral $ length $ vivas !! 2
+  let nRN = fromIntegral $ length $ vivas !! 3
+  let esBlanco = bandoActual == 'B'
+  let esNegro = bandoActual == 'N'
+  let puntuacionBlancas
+        | esBlanco = 2.5 * nRB + nDB
+        | esNegro = - (2.5 * nRB + nDB)
+        | otherwise = 0.0
+  let puntuacionNegras
+        | esNegro = 2.5 * nRN + nDN
+        | esBlanco = - (2.5 * nRN + nDN)
+        | otherwise = 0.0
+  let ataque = atacaPieza t pieza pos reina
+  let ataques = concatMap (\(nom,p) -> atacaPieza t nom p (esReina nom)) (piezasAlrededor t pos)
+  let puntuacionAtaca
+        | null ataque = 0.0
+        | otherwise = 2.0 * fromIntegral (length ataque)
+  let puntuacionAtacado | null ataques = 0.0
+        | otherwise = -2.0
+  let puntuacionFinal = puntuacionBlancas + puntuacionNegras + puntuacionAtaca + puntuacionAtacado
+  let ganador = bandoGanador t vivas puntuacionFinal
+  let hasGanado = (esBlanco && ganador == "blancas") || (esNegro && ganador == "negras")
+  let puntuacionGanar
+        | hasGanado = 30.0
+        | otherwise = 0.0
+  return $ puntuacionFinal + puntuacionGanar
+
+piezasAlrededor :: Tablero -> Pos -> [(String,Pos)]
+piezasAlrededor t pos = nomsYps
   where
-    -- Necesitamos saber 2 cosas, cuantas piezas hay de cada bando y a cuál pertenecemos
-    pieza = t ! pos
-    bandoActual = bando pieza
-    vivas = piezasVivas t
-    nDB = fromIntegral $ length $ cabeza "puntuaDamas" vivas
-    nRB = fromIntegral $ length $ vivas !! 1
-    nDN = fromIntegral $ length $ vivas !! 2
-    nRN = fromIntegral $ length $ vivas !! 3
-    esBlanco = bandoActual == 'B'
-    esNegro = bandoActual == 'N'
-    puntuacionBlancas | esBlanco = 2.5 * nRB + nDB
-      | esNegro = - (2.5 * nRB + nDB)
-      | otherwise = 0.0
-    puntuacionNegras | esNegro = 2.5 * nRN + nDN
-      | esBlanco = - (2.5 * nRN + nDN)
-      | otherwise = 0.0
-    puntuacionFinal = puntuacionBlancas + puntuacionNegras
-    ganador = bandoGanador t vivas puntuacionFinal
-    hasGanado = (esBlanco && ganador == "blancas") || (esNegro && ganador == "negras")
-    puntuacionGanar | hasGanado = 30.0
-      | otherwise = 0.0
+    posiciones = fichasAlrededorCasilla t pos
+    nombres = map (t !) posiciones
+    nomsYps = zip nombres posiciones
+
 
 {- +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 Funciones para los gráficos
@@ -369,8 +391,17 @@ alturasEstaticas = [dif, turnosYmarcas]
     dif = alturasCasillas !! 2
     turnosYmarcas = alturasCasillas !! 5
 
-posBoton :: (Float, Float)
-posBoton = (ancho, (- ancho) + ajusteInicial)
+posCargar :: Point
+posCargar = (ancho - ajusteInicial / 2, - ancho + ajusteInicial)
+
+posCargarJuego :: Point
+posCargarJuego = ((- ancho) - 4 * ajusteInicial, 0)
+
+posGuardarJuego :: Point
+posGuardarJuego = (ancho + 4 * ajusteInicial, 0)
+
+posBoton :: Point
+posBoton = (ancho - ajusteInicial / 2, (- ancho) + 4 * ajusteInicial)
 
 anchoBoton :: Float
 anchoBoton = 130.0
@@ -578,13 +609,16 @@ calculaMundo casilla ((estado, pos), juego, dif, prof, marca, turno, seleccionad
         | otherwise = nuevoNombre
   let tocaMaquina = null casillasAtaque || not ataca
   let ad = piezasVivas nuevoEstado
-  let punt = puntuaDamas nuevoEstado casilla
-  let ad' | marca == "B" && punt > 0 = ad ++ [["humano"]]
+  punt <- puntuaDamas nuevoEstado casilla
+  let ad'
+        | marca == "B" && punt > 0 = ad ++ [["humano"]]
         | marca == "N" && punt > 0 = ad ++ [["humano"]]
         | marca == "B" && punt < 0 = ad ++ [["maquina"]]
         | marca == "N" && punt < 0 = ad ++ [["maquina"]]
         | otherwise = ad ++ [["empate"]]
-  let ad'' | finDamas nuevoEstado = ad' | otherwise = ad
+  let ad''
+        | finDamas nuevoEstado = ad'
+        | otherwise = ad
   let nuevoMundo = ((nuevoEstado, casilla), juego, dif, prof, marca, turno, sel, tocaMaquina, ad'')
   return nuevoMundo
 
@@ -696,8 +730,8 @@ traduceProf :: String -> Int
 traduceProf dif
   | dif == "Mínima" = 1
   | dif == "Fácil" = 2
-  | dif == "Normal" = 4
-  | dif == "Difícil" = 4
+  | dif == "Normal" = 5
+  | dif == "Difícil" = 5
   | otherwise = 1
 
 pintaBlanca :: Point -> Picture

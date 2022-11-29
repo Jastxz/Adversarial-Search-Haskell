@@ -20,6 +20,9 @@ module Funciones3enRaya
     alturasEstaticas,
     cambiaOpcion,
     creaTableroConOpciones,
+    posCargar,
+    posCargarJuego,
+    posGuardarJuego,
     posBoton,
     anchoBoton,
     altoBoton,
@@ -68,12 +71,12 @@ movs3enRaya t marcaMaquina = zip tableros listaVacias
     tableros = map (\pos -> setElem marcaMaquina pos t) listaVacias
 
 -- Puntuaciones
-puntua3enRaya :: Tablero -> Pos -> Double
-puntua3enRaya t pos = hay3
-  where
-    hay2 = if hay2EnRaya t pos then 5.0 else 0.0
-    corta3 = if corta3EnRaya t pos then 7.5 else hay2
-    hay3 = if hay3EnRaya t then 10.0 else corta3
+puntua3enRaya :: Tablero -> Pos -> IO Double
+puntua3enRaya t pos = do
+  let hay2 = if hay2EnRaya t pos then 5.0 else 0.0
+  let corta3 = if corta3EnRaya t pos then 7.5 else hay2
+  let hay3 = if hay3EnRaya t then 10.0 else corta3
+  return hay3
 
 {- +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 Funciones para los gráficos
@@ -115,8 +118,17 @@ alturasEstaticas = [dif, turnos, marcas]
     turnos = alturasCasillas !! 5
     marcas = alturasCasillas !! 8
 
-posBoton :: (Float, Float)
-posBoton = (ancho - ajusteInicial, (- ancho) + ajusteInicial)
+posCargar :: Point
+posCargar = (ancho - ajusteInicial/2, - ancho + ajusteInicial)
+
+posCargarJuego :: Point
+posCargarJuego = ((- ancho) - 2*ajusteInicial, 0)
+
+posGuardarJuego :: Point
+posGuardarJuego = (ancho + 2*ajusteInicial, 0)
+
+posBoton :: Point
+posBoton = (ancho - ajusteInicial/2, (- ancho) + 2*ajusteInicial)
 
 anchoBoton :: Float
 anchoBoton = 130.0

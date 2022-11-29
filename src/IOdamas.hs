@@ -10,14 +10,15 @@ where
 
 import Data.List
 import Data.Matrix
-import FuncionesDamas
 import Graphics.Gloss
 import Graphics.Gloss.Interface.IO.Game
-import Interconexion
-import MiniMax
 import Tipos
 import Utiles
 import UtilesGraficos
+import GuardarCargar
+import Interconexion
+import MiniMax
+import FuncionesDamas
 
 {- +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 Funciones de uso de algoritmo
@@ -32,12 +33,10 @@ ponAleatorio :: Tablero -> String -> Pos -> IO Movimiento
 ponAleatorio t marca p = do
   al <- now
   let movimientosPosibles = movsDamas t marca
-  let limiteValidas = length movimientosPosibles
-  let a = mod al limiteValidas
-  let mov = movimientosPosibles !! a
+  let mov = aleatorio al movimientosPosibles
   print "Datos del movimiento aleatorio"
   print al
-  print limiteValidas
+  print $ length movimientosPosibles
   return mov
   where
     listaVacios = casillasVacias t
@@ -83,10 +82,14 @@ pintaOpcionesDamas mundo@(m@(e, p), juego, dif, prof, marca, turno, seleccionado
         | otherwise = 1
   let cbx2 = pictures $ dibujaCheckbox (lMarcas - 1) mrc 'X' inicioCasillas evolucionCasillas
   let checkboxMarcas = translate 0 (alturasCasillas !! 5) cbx2
-  -- Preparamos el botón y la lista para crear la imagen
+  -- Preparamos los botones y la lista para crear la imagen
+  let (cX, cY) = posCargar
+  let cargar = translate cX cY $ boton "Cargar" anchoBoton altoBoton
   let (bX, bY) = posBoton
   let btn = translate bX bY $ boton "Comenzar" anchoBoton altoBoton
-  let listaRes = [borde, tituloDif, niveles, checkboxNiveles, tituloMarca, marcas, checkboxMarcas, btn]
+  let listaRes1 = [borde, tituloDif, niveles, checkboxNiveles, tituloMarca]
+  let listaRes2 = [marcas, checkboxMarcas, cargar, btn]
+  let listaRes = listaRes1 ++ listaRes2
   -- Resultado
   let res = pictures listaRes
   return res
@@ -106,10 +109,12 @@ manejaOpcionesDamas raton@(x, y) mundo@(mov@(estado, pos), juego, dif, prof, mar
   let columna
         | indice == 99 || indice2 == 99 = head fila
         | otherwise = fila !! indice2
+  let cargar = pulsaCerca raton posCargar
   let comenzar = pulsaCerca raton posBoton
   -- Cambiamos la información del juego a ejecutar y preparamos el tablero inicial
   nuevoMundo@(m, j, d, p, ma, t, s, e, ad) <- cambiaOpcion raton mundo indice columna
   let mundoAejecutar
+        | cargar = menuCargarPartida
         | comenzar = creaTableroConOpciones nuevoMundo
         | otherwise = nuevoMundo
   return mundoAejecutar
@@ -152,8 +157,13 @@ pintaJuegoDamas mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, selecc
         | seleccionado /= "" = "Pulse en una casilla vacia valida para mover la ficha"
         | otherwise = "Pulse en una ficha para seleccionarla"
   let indicacion = translate (- correccionPosicion (1.25 * tamTablero)) (- alturaMensajes) $ texto mensajeIndicativo
+  -- Botones para guardar y cargar partidas
+  let (cX, cY) = posCargarJuego
+  let cargar = translate cX cY $ boton "Cargar" anchoBoton altoBoton
+  let (gX, gY) = posGuardarJuego
+  let guardar = translate gX gY $ boton "Guardar" anchoBoton altoBoton
   -- Resultado
-  let res = pictures [turno, borde, cuadradosDibujados, estadoDibujado, indicacion]
+  let res = pictures [turno, borde, cuadradosDibujados, estadoDibujado, indicacion, cargar, guardar]
   return res
 
 hazMovimientoDamas :: Point -> Mundo -> IO Mundo
@@ -162,12 +172,22 @@ hazMovimientoDamas raton mundo@(mov@(estado, pos), juego, dif, prof, marca, turn
   let posCasillas = casillasBlancas
   -- Comprobamos si ha pulsado cerca de alguna casilla para realizar una acción de juego
   let pulsadas = [casilla | casilla <- posCasillas, pulsaCasilla casilla raton]
+  let cargar = pulsaCerca raton posCargarJuego
+  let guardar = pulsaCerca raton posGuardarJuego
   -- Finalmente realizamos la acción en caso de que la hubiera y fuera realizable ó simplemente no devolvemos nada nuevo
   if not (null pulsadas)
     then do
       let accion = head pulsadas
       calculaNuevoEstado accion mundo
-    else return mundo
+    else
+      if cargar || guardar
+        then do
+          if cargar
+            then return menuCargarPartida
+            else do
+              guardarPartida mundo
+              return mundo
+        else return mundo
 
 {- Función para el turno de la máquina -}
 mueveMaquinaDamas :: Mundo -> IO Mundo
@@ -178,7 +198,7 @@ mueveMaquinaDamas mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, sele
   let deLaMaquina | marcaMaquina == "B" = cabeza "mueveMaquinaDamas" vivas ++ (vivas !! 1)
         | otherwise = (vivas !! 2) ++ (vivas !! 3)
   let pos = buscaPieza e $ cabeza "mueveMaquinaDamas" deLaMaquina
-  let punt = puntuaDamas e pos
+  punt <- puntuaDamas e pos
   let ad
         | marcaMaquina == "B" && punt > 0 = vivas ++ [["maquina"]]
         | marcaMaquina == "N" && punt > 0 = vivas ++ [["maquina"]]

@@ -9,6 +9,7 @@ import Graphics.Gloss.Interface.IO.Game
 import Tipos
 import Utiles
 import UtilesGraficos
+import GuardarCargar
 import Interconexion
 import IO3enRaya
 import IOdamas
@@ -38,12 +39,13 @@ tasaDeRefresco :: Int
 tasaDeRefresco = 1
 
 inicial :: Mundo
-inicial = (tableroVacio "menu", "menu", 0, 0, "menu", 0, "", False, [])
+inicial = (tableroVacio "menu", "menu", 0, 0, "menu", 0, "", False, [["nada"]])
 
 dibujaMundo :: Mundo -> IO Picture
 dibujaMundo mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, seleccionado, esMaquina, adicional)
   | clave == "menu" = pintaMenu
   | clave == "opciones" = pintaOpciones juego mundo
+  | clave == "cargar" = pintaMenuCarga
   | otherwise = pintaJuego juego mundo
   where
     clave = estado ! pos
@@ -53,11 +55,22 @@ manejaEntrada evento mundo
   | EventKey (MouseButton LeftButton) Up _ raton <- evento = hazAccion raton mundo
   | otherwise = return mundo
 
+-- Función de distribución de casos similar a dibujaMundo
+hazAccion :: Point -> Mundo -> IO Mundo
+hazAccion raton mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, seleccionado, esMaquina, adicional)
+  | clave == "menu" = seleccionaJuego raton mundo
+  | clave == "opciones" = escogeOpcion raton mundo
+  | clave == "cargar" = escogePartida raton mundo
+  | otherwise = hazMovimiento raton mundo
+  where
+    clave = estado ! pos
+
 actualiza :: Float -> Mundo -> IO Mundo
 actualiza _ mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, seleccionado, esMaquina, adicional)
   | esEstadoFinal estado juego = return mundo
   | clave == "menu" = return mundo
   | clave == "opciones" = return mundo
+  | clave == "cargar" = return mundo
   | esMaquina = mueveMaquina mundo
   | otherwise = return mundo
   where
@@ -123,11 +136,11 @@ escogeOpcion raton mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, sel
     parte1 = "Ha ocurrido un error en la función escogeOpción. El juego "
     parte2 = " no se valora como opcion posible."
     mundo3 | (estado ! (1, 1)) == "opciones" = mundo
-      | otherwise = (tableroVacio "opciones", "3enRaya", 0, 0, "O", 0, "", False, [])
+      | otherwise = (tableroVacio "opciones", "3enRaya", 0, 0, "O", 0, "", False, [["nada"]])
     mundoG | (estado ! (1, 1)) == "opciones" = mundo
-      | otherwise = (tableroVacio "opciones", "gato", 0, 0, "R", 11, "", False, [])
+      | otherwise = (tableroVacio "opciones", "gato", 0, 0, "R", 11, "", False, [["nada"]])
     mundoD | (estado ! (1, 1)) == "opciones" = mundo
-      | otherwise = (tableroVacio "opciones", "damas", 0, 0, "B", 11, "", False, [])
+      | otherwise = (tableroVacio "opciones", "damas", 0, 0, "B", 11, "", False, [["nada"]])
 
 -- ---------------------------------------------------------------------------------
 
@@ -184,22 +197,6 @@ listaDeJuegos = ["3 En Raya", "El gato y el raton", "Damas Espanyolas"]
 ordenJuegos :: Point
 ordenJuegos = (220.0, -40.0)
 
--- Movimiento inicial vacio para el menú
-tableroVacio :: String -> Movimiento
-tableroVacio nombre = (tab, pos)
-  where
-    tab = matrix 1 1 $ \(i, j) -> nombre
-    pos = (1, 1)
-
--- Función de distribución de casos similar a dibujaMundo
-hazAccion :: Point -> Mundo -> IO Mundo
-hazAccion raton mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, seleccionado, esMaquina, adicional)
-  | clave == "menu" = seleccionaJuego raton mundo
-  | clave == "opciones" = escogeOpcion raton mundo
-  | otherwise = hazMovimiento raton mundo
-  where
-    clave = estado ! pos
-
 -- Mundo para cambiar a las opciones de un juego cuando este se ha seleccionado
 iniciaOpciones :: String -> Mundo
-iniciaOpciones juego = (tableroVacio "opciones", juego, 0, 0, "opciones", 0, "", False, [])
+iniciaOpciones juego = (tableroVacio "opciones", juego, 0, 0, "opciones", 0, "", False, [["nada"]])

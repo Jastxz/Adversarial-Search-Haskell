@@ -13,11 +13,12 @@ import Data.Matrix
 import FuncionesGato
 import Graphics.Gloss
 import Graphics.Gloss.Interface.IO.Game
-import Interconexion
-import MiniMax
 import Tipos
 import Utiles
 import UtilesGraficos
+import GuardarCargar
+import Interconexion
+import MiniMax
 
 {- +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 Funciones de uso de algoritmo
@@ -79,10 +80,14 @@ pintaOpcionesGato mundo@(m@(e, p), juego, dif, prof, marca, turno, seleccionado,
   let cbx2 = pictures $ dibujaCheckbox (lMarcas - 1) mrc 'X' inicioCasillas evolucionCasillas
   let checkboxMarcas = translate 0 (alturasCasillas !! 5) cbx2
   tableroMostrado <- pintaComienzoTablero mov
-  -- Preparamos el botón y la lista para crear la imagen
+  -- Preparamos los botones y la lista para crear la imagen
+  let (cX, cY) = posCargar
+  let cargar = translate cX cY $ boton "Cargar" anchoBoton altoBoton
   let (bX, bY) = posBoton
   let btn = translate bX bY $ boton "Comenzar" anchoBoton altoBoton
-  let listaRes = [borde, tituloDif, niveles, checkboxNiveles, tituloMarca, marcas, checkboxMarcas, tableroMostrado, btn]
+  let listaRes1 = [borde, tituloDif, niveles, checkboxNiveles, tituloMarca]
+  let listaRes2 = [marcas, checkboxMarcas, tableroMostrado, cargar, btn]
+  let listaRes = listaRes1 ++ listaRes2
   -- Resultado
   let res = pictures listaRes
   return res
@@ -100,6 +105,7 @@ manejaOpcionesGato raton@(x, y) mundo@(mov@(estado, pos), juego, dif, prof, marc
   let indice2 = minimum [if cercaBox x longitud then p else 99 | (longitud, p) <- zip [iC, iC + eC ..] [0 .. (limite - 1)]]
   let columna | indice == 99 || indice2 == 99 = head fila
         | otherwise = fila !! indice2
+  let cargar = pulsaCerca raton posCargar
   let comenzar = pulsaCerca raton posBoton
   -- Preparamos las variables para el caso de que empiece la máquina en el primer turno
   movMaquina <- inicializaTableroParaCasoGato turno
@@ -107,6 +113,7 @@ manejaOpcionesGato raton@(x, y) mundo@(mov@(estado, pos), juego, dif, prof, marc
   nuevoMundo@(m, j, d, p, ma, t, s, e, ad) <- cambiaOpcion raton mundo indice columna
   let mundoMaquina = (movMaquina, j, d, p, ma, t, s, e, ad)
   let mundoAejecutar
+        | cargar = menuCargarPartida
         | comenzar && ma == "R" = creaTableroConOpciones nuevoMundo
         | comenzar && ma /= "R" = creaTableroConOpciones mundoMaquina
         | otherwise = nuevoMundo
@@ -125,8 +132,9 @@ pintaJuegoGato mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, selecci
   let borde = rectangleWire tamTablero tamTablero
   let casPosible = color green $ rectangleSolid diferenciaParaCasillas diferenciaParaCasillas
   let posRaton = buscaPieza estado "R"
+  let posGato = buscaPieza estado seleccionado
   let vaciasRaton = casillasVaciasRaton estado posRaton
-  let vaciasGatos = casillasVaciasGatos estado
+  let vaciasGatos = casillasVaciasGatos estado posGato
   let posicionesValidas
         | seleccionado == "R" = vaciasRaton
         | seleccionado `elem` nombresGatos = vaciasGatos
@@ -148,8 +156,13 @@ pintaJuegoGato mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, selecci
         | seleccionado /= "" = "Pulse en una casilla vacía válida para mover la ficha"
         | otherwise = "Pulse en una ficha para seleccionarla"
   let indicacion = translate (- correccionPosicion (1.25 * tamTablero)) (- alturaMensajes) $ texto mensajeIndicativo
+  -- Botones para guardar y cargar partidas
+  let (cX, cY) = posCargarJuego
+  let cargar = translate cX cY $ boton "Cargar" anchoBoton altoBoton
+  let (gX, gY) = posGuardarJuego
+  let guardar = translate gX gY $ boton "Guardar" anchoBoton altoBoton
   -- Resultado
-  let res = pictures [turno, borde, cuadradosDibujados, estadoDibujado, indicacion]
+  let res = pictures [turno, borde, cuadradosDibujados, estadoDibujado, indicacion, cargar, guardar]
   return res
 
 hazMovimientoGato :: Point -> Mundo -> IO Mundo
@@ -158,12 +171,22 @@ hazMovimientoGato raton mundo@(mov@(estado, pos), juego, dif, prof, marca, turno
   let posCasillas = casillasBlancas
   -- Comprobamos si ha pulsado cerca de alguna casilla para realizar una acción de juego
   let pulsadas = [casilla | casilla <- posCasillas, pulsaCasilla casilla raton]
+  let cargar = pulsaCerca raton posCargarJuego
+  let guardar = pulsaCerca raton posGuardarJuego
   -- Finalmente realizamos la acción en caso de que la hubiera y fuera realizable ó simplemente no devolvemos nada nuevo
   if not (null pulsadas)
     then do
       let accion = head pulsadas
       calculaNuevoEstado accion mundo
-    else return mundo
+    else
+      if cargar || guardar
+        then do
+          if cargar
+            then return menuCargarPartida
+            else do
+              guardarPartida mundo
+              return mundo
+        else return mundo
 
 {- Función para el turno de la máquina -}
 mueveMaquinaGato :: Mundo -> IO Mundo
@@ -172,9 +195,10 @@ mueveMaquinaGato mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, selec
   mn@(e,p) <- trataDificultad mov dif prof marcaMaquina
   let posRaton = buscaPieza e "R"
   let posGatos = [buscaPieza e m | m <- nombresGatos]
-  let ad
-        | (marcaMaquina == "R") && ratonEscapado e posRaton posGatos = [["maquina"]]
-        | (marcaMaquina `elem` nombresGatos) && ratonEncerrado e posRaton = [["maquina"]]
+  let ad | (marca == "R") && ratonEscapado e posRaton posGatos = [["humano"]]
+        | (marca == "G") && ratonEncerrado e posRaton = [["humano"]]
+        | (marca == "G") && ratonEscapado e posRaton posGatos = [["maquina"]]
+        | (marca == "R") && ratonEncerrado e posRaton = [["maquina"]]
         | otherwise = adicional
   let nuevoMundo = (mn, juego, dif, prof, marca, turno, seleccionado, False, ad)
   return nuevoMundo

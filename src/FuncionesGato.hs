@@ -30,6 +30,9 @@ module FuncionesGato
     cambiaOpcion,
     creaTableroConOpciones,
     calculaNuevoEstado,
+    posCargar,
+    posCargarJuego,
+    posGuardarJuego,
     posBoton,
     anchoBoton,
     altoBoton,
@@ -90,11 +93,8 @@ ratonEscapado t raton gatos = filaRaton > filaGato || filaRaton == ma
 casillasVaciasRaton :: Tablero -> Pos -> [Pos]
 casillasVaciasRaton = casillasAlrededorFicha
 
-casillasVaciasGatos :: Tablero -> [Pos]
-casillasVaciasGatos m = concat [casillasValidasGatos m (buscaPieza m g) | g <- nombresGatos]
-
-casillasValidasGatos :: Tablero -> Pos -> [Pos]
-casillasValidasGatos m pos@(f, c) = filter (\(i, j) -> i < f) $ casillasAlrededorFicha m pos
+casillasVaciasGatos :: Tablero -> Pos -> [Pos]
+casillasVaciasGatos m posGato@(f, c) = filter (\(i, j) -> i < f) $ casillasAlrededorFicha m posGato
 
 movsGato :: Tablero -> String -> Movimientos
 movsGato t marca
@@ -108,45 +108,57 @@ mueveGato :: Tablero -> [Pos] -> Movimientos
 mueveGato _ [] = []
 mueveGato t (g : gs) = movimientosDelGato ++ mueveGato t gs
   where
-    validas = casillasValidasGatos t g
+    validas = casillasVaciasGatos t g
     nombre = t ! g
     movimientosDelGato = map (\v -> (intercambiaPieza t nombre v g, v)) validas
 
 -- Puntuaciones
-puntuaGato :: Tablero -> Pos -> Double
-puntuaGato t pos = puntuacionEscapado + puntuacionMeta + puntuacionEncerrado + puntuacionRodeado
-  where
-    -- Necesitamos saber si la máquina actúa de ratón o de gatos
-    laMaquinaEs = cabeza "puntuaGato" $ t ! pos
-    esRaton = laMaquinaEs == 'R'
-    esGatos = laMaquinaEs == 'G'
-    -- También necesitamos las posiciones de todos
-    posRaton
-      | esRaton = pos
-      | otherwise = buscaPieza t "R"
-    posGatos = [buscaPieza t m | m <- nombresGatos]
-    -- Procesamos un poco los datos que tenemos
-    haEscapado = ratonEscapado t posRaton posGatos
-    estaEncerrado = ratonEncerrado t posRaton
-    filaRaton = fromIntegral $ fst posRaton
-    gatosQueRodeanAlRaton = fromIntegral $ length $ fichasAlrededorCasilla t posRaton
-    -- Definimos las puntuaciones
-    puntuacionEscapado
-      | haEscapado && esRaton = 15.0
-      | haEscapado && esGatos = -15.0
-      | otherwise = 0.0
-    puntuacionEncerrado
-      | estaEncerrado && esRaton = -10.0
-      | estaEncerrado && esGatos = 10.0
-      | otherwise = 0.0
-    puntuacionMeta
-      | esRaton = 1.25 * filaRaton
-      | esGatos = (-1.25) * filaRaton
-      | otherwise = 0.0
-    puntuacionRodeado
-      | esRaton = (-2.5) * gatosQueRodeanAlRaton
-      | esGatos = 2.5 * gatosQueRodeanAlRaton
-      | otherwise = 0.0
+puntuaGato :: Tablero -> Pos -> IO Double
+puntuaGato t pos = do
+  -- Necesitamos saber si la máquina actúa de ratón o de gatos
+  let laMaquinaEs = cabeza "puntuaGato" $ t ! pos
+  let esRaton = laMaquinaEs == 'R'
+  let esGatos = laMaquinaEs == 'G'
+  -- También necesitamos las posiciones de todos
+  let posRaton
+        | esRaton = pos
+        | otherwise = buscaPieza t "R"
+  let posGatos = [buscaPieza t m | m <- nombresGatos]
+  -- Procesamos un poco los datos que tenemos
+  let haEscapado = ratonEscapado t posRaton posGatos
+  let estaEncerrado = ratonEncerrado t posRaton
+  let finJuego = haEscapado || estaEncerrado
+  let filaRaton = fromIntegral $ fst posRaton
+  let filasGatos = map fst posGatos
+  let distancias = [abs (g1 - g2) | g1 <- filasGatos, g2 <- filasGatos]
+  let maxDist = fromIntegral $ maximum distancias
+  let perdido = maxDist >= 2.0
+  let adelantado = fromIntegral $ minimum filasGatos
+  let lineaAtravesada = filaRaton >= adelantado
+  -- Definimos las puntuaciones
+  let puntuacionEscapado
+        | esRaton = 30.0
+        | esGatos = -30.0
+        | otherwise = 0.0
+  let puntuacionEncerrado
+        | esRaton = -30.0
+        | esGatos = 30.0
+        | otherwise = 0.0
+  let puntuacionMeta
+        | esRaton = 1.25 * filaRaton
+        | otherwise = 0.0
+  let puntuacionLineaAtravesada | esRaton && lineaAtravesada = 10.0
+        | esGatos && lineaAtravesada = - 15.0
+        | otherwise = 0.0
+  let penalizacionDistanciaGatos
+        | esRaton && perdido = maxDist
+        | esGatos && perdido = - (8.0 - abs (maxDist -adelantado)) * maxDist
+        | otherwise = 0.0
+  let puntuacionBasica
+        | haEscapado = puntuacionEscapado
+        | estaEncerrado = puntuacionEncerrado
+        | otherwise = puntuacionMeta + puntuacionLineaAtravesada + penalizacionDistanciaGatos
+  return puntuacionBasica
 
 {- +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 Funciones para los gráficos
@@ -201,8 +213,17 @@ alturasEstaticas = [dif, turnosYmarcas]
     dif = alturasCasillas !! 2
     turnosYmarcas = alturasCasillas !! 5
 
-posBoton :: (Float, Float)
-posBoton = (ancho, (- ancho) + ajusteInicial)
+posCargar :: Point
+posCargar = (ancho - ajusteInicial / 2, - ancho + ajusteInicial)
+
+posCargarJuego :: Point
+posCargarJuego = ((- ancho) - 4 * ajusteInicial, 0)
+
+posGuardarJuego :: Point
+posGuardarJuego = (ancho + 4 * ajusteInicial, 0)
+
+posBoton :: Point
+posBoton = (ancho - ajusteInicial / 2, (- ancho) + 4 * ajusteInicial)
 
 anchoBoton :: Float
 anchoBoton = 130.0
@@ -310,8 +331,9 @@ calculaNuevoEstado casilla mundo@(mov@(estado, pos), juego, dif, prof, marca, tu
   | otherwise = return mundo
   where
     posRaton = buscaPieza estado "R"
+    posGato = buscaPieza estado seleccionado
     vaciasRaton = casillasVaciasRaton estado posRaton
-    vaciasGatos = casillasVaciasGatos estado
+    vaciasGatos = casillasVaciasGatos estado posGato
     t = round tamMatriz
     ps = [(i, j) | i <- [1 .. t], j <- [1 .. t]]
     matrz = toList matrizPosiciones
@@ -328,8 +350,11 @@ calculaMundo casilla ((estado, pos), juego, dif, prof, marca, turno, seleccionad
       | seleccionado == "R" = casilla
       | otherwise = buscaPieza nuevoEstado "R"
     posGatos = [buscaPieza nuevoEstado m | m <- nombresGatos]
-    ad | (seleccionado == "R") && ratonEscapado nuevoEstado posRaton posGatos = [["humano"]]
-      | (seleccionado `elem` nombresGatos) && ratonEncerrado nuevoEstado posRaton = [["humano"]]
+    ad
+      | (marca == "R") && ratonEscapado nuevoEstado posRaton posGatos = [["humano"]]
+      | (marca == "G") && ratonEncerrado nuevoEstado posRaton = [["humano"]]
+      | (marca == "G") && ratonEscapado nuevoEstado posRaton posGatos = [["maquina"]]
+      | (marca == "R") && ratonEncerrado nuevoEstado posRaton = [["maquina"]]
       | otherwise = adicional
     nuevoMundo = ((nuevoEstado, casilla), juego, dif, prof, marca, turno, "", True, ad)
 
@@ -406,9 +431,9 @@ traduceDif dif
 traduceProf :: String -> Int
 traduceProf dif
   | dif == "Mínima" = 1
-  | dif == "Fácil" = 7
-  | dif == "Normal" = 8
-  | dif == "Difícil" = 8
+  | dif == "Fácil" = 5
+  | dif == "Normal" = 9
+  | dif == "Difícil" = 9
   | otherwise = 1
 
 turnoApos :: Int -> Pos
@@ -455,6 +480,7 @@ formaPeon = pictures [circulo, triangulo]
     tam = diferenciaParaCasillas / 2
     circulo = translate 0.0 tam $ circleSolid (tam / 2)
     triangulo = polygon [(0.0, tam), (- tam, 0.0), (tam, 0.0)]
+
 uneFilas :: [Point] -> [Point] -> [Point]
 uneFilas fi fp = f1 ++ f2 ++ uneFilas ri rp
   where
