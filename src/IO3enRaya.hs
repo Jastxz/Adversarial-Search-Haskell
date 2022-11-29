@@ -182,11 +182,11 @@ hazMovimiento3enRaya raton mundo@(mov@(estado, pos), juego, dif, prof, marca, tu
     else
       if cargar || guardar
         then do
-          partidaGuardada <- guardarPartida mundo
-          let guardaOcarga | cargar = menuCargarPartida
-                | guardar = partidaGuardada
-                | otherwise = mundo
-          return guardaOcarga
+          if cargar
+            then return menuCargarPartida
+            else do
+              guardarPartida mundo
+              return mundo
         else return mundo
 
 {- Función para el turno de la máquina -}

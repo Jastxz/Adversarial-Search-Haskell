@@ -132,8 +132,9 @@ pintaJuegoGato mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, selecci
   let borde = rectangleWire tamTablero tamTablero
   let casPosible = color green $ rectangleSolid diferenciaParaCasillas diferenciaParaCasillas
   let posRaton = buscaPieza estado "R"
+  let posGato = buscaPieza estado seleccionado
   let vaciasRaton = casillasVaciasRaton estado posRaton
-  let vaciasGatos = casillasVaciasGatos estado
+  let vaciasGatos = casillasVaciasGatos estado posGato
   let posicionesValidas
         | seleccionado == "R" = vaciasRaton
         | seleccionado `elem` nombresGatos = vaciasGatos
@@ -180,11 +181,11 @@ hazMovimientoGato raton mundo@(mov@(estado, pos), juego, dif, prof, marca, turno
     else
       if cargar || guardar
         then do
-          partidaGuardada <- guardarPartida mundo
-          let guardaOcarga | cargar = menuCargarPartida
-                | guardar = partidaGuardada
-                | otherwise = mundo
-          return guardaOcarga
+          if cargar
+            then return menuCargarPartida
+            else do
+              guardarPartida mundo
+              return mundo
         else return mundo
 
 {- Función para el turno de la máquina -}

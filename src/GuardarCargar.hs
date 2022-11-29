@@ -103,7 +103,6 @@ sacaContenido contenido = do
         | otherwise = False
   let adicional = stringToLista adForm
   let mundo = ((estado, pos), juego, dif, prof, marca, turno, seleccionado, esMaquina, adicional)
-  print mundo
   return mundo
 
 {- +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -161,7 +160,7 @@ cambiaComas (x:xs)
 eliminaBarrasDobles :: String -> String
 eliminaBarrasDobles "" = ""
 eliminaBarrasDobles (x:xs)
-  | x == '\\' = eliminaBarrasDobles xs
+  | x == '\\' = ' ' : eliminaBarrasDobles xs
   | x == '\"' = eliminaBarrasDobles xs
   | otherwise = x : eliminaBarrasDobles xs
 

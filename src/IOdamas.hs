@@ -182,11 +182,11 @@ hazMovimientoDamas raton mundo@(mov@(estado, pos), juego, dif, prof, marca, turn
     else
       if cargar || guardar
         then do
-          partidaGuardada <- guardarPartida mundo
-          let guardaOcarga | cargar = menuCargarPartida
-                | guardar = partidaGuardada
-                | otherwise = mundo
-          return guardaOcarga
+          if cargar
+            then return menuCargarPartida
+            else do
+              guardarPartida mundo
+              return mundo
         else return mundo
 
 {- Función para el turno de la máquina -}
@@ -198,7 +198,7 @@ mueveMaquinaDamas mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, sele
   let deLaMaquina | marcaMaquina == "B" = cabeza "mueveMaquinaDamas" vivas ++ (vivas !! 1)
         | otherwise = (vivas !! 2) ++ (vivas !! 3)
   let pos = buscaPieza e $ cabeza "mueveMaquinaDamas" deLaMaquina
-  let punt = puntuaDamas e pos
+  punt <- puntuaDamas e pos
   let ad
         | marcaMaquina == "B" && punt > 0 = vivas ++ [["maquina"]]
         | marcaMaquina == "N" && punt > 0 = vivas ++ [["maquina"]]
