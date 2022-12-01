@@ -34,9 +34,6 @@ ponAleatorio t marca p = do
   al <- now
   let movimientosPosibles = movsDamas t marca
   let mov = aleatorio al movimientosPosibles
-  print "Datos del movimiento aleatorio"
-  print al
-  print $ length movimientosPosibles
   return mov
   where
     listaVacios = casillasVacias t
@@ -46,8 +43,6 @@ usaNegamax :: Movimiento -> Int -> Int -> String -> String -> IO Movimiento
 usaNegamax m dif prof marca juego = do
   mejorTablero <- negamax m dif prof marca juego
   let mejorMovimiento = (fst mejorTablero, snd m)
-  {- putStrLn "Mejor puntuación para la máquina en el tablero dado"
-  print mejorMovimiento -}
   return mejorMovimiento
 
 {- +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

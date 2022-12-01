@@ -122,11 +122,6 @@ negamaxCompleto (estado, pos) profundidad marcaMaquina juego alfa beta quienJueg
   let movsPosibles = movimientosPosibles estado quienJuega marcaMaquina juego
   if esFinal || (profundidad <= 98 && profundidad >= 10)
     then do
-      {- print "*************Es final*****************"
-      print (estado, puntuacion)
-      print $ "Es final : " ++ show esFinal
-      print pos
-      print marcaMaquina -}
       return (estado, puntuacion)
     else do
       if profundidad <= 0
@@ -136,8 +131,6 @@ negamaxCompleto (estado, pos) profundidad marcaMaquina juego alfa beta quienJueg
             then do
               return (estado, puntuacion)
             else do
-              {- print "*************No hay reposo*****************"
-              print (estado, puntuacion) -}
               negamaxCompleto (estado, pos) 100 marcaMaquina juego alfa beta quienJuega
         else do
           let sig = siguiente quienJuega
@@ -151,10 +144,8 @@ negamaxCompleto (estado, pos) profundidad marcaMaquina juego alfa beta quienJueg
                 | otherwise = movsPosibles
           iteraciones <- iteraCompleto movimientosIterar (profundidad - 1) sigMarca juego alfa beta sig
           al <- now
-          -- let mejor = aleatorio al iteraciones
-          -- let mejor = minimoSegundo iteraciones
           let mejor = aleatorio al $ minimoSegundo iteraciones
-          if profundidad == 8
+          if profundidad == 1000
             then do
               print mejor
               return mejor
@@ -221,13 +212,3 @@ minimoSegundo (x:xs)
       (m,num) = x
       resto = minimoSegundo xs
       (a,ma) = cabeza "minimoSegundo" resto
-
--- Previous version
-{- minimoSegundo :: TablerosPuntuados -> TableroPuntuado
-minimoSegundo (x:xs)
-    | null xs = x
-    | num <= ma = x
-    | otherwise = (a,ma)
-    where
-      (m,num) = x
-      (a,ma) = minimoSegundo xs -}
