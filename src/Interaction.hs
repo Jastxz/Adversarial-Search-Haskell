@@ -18,9 +18,7 @@ import IOgato
 mainInteraction :: IO ()
 mainInteraction = do
   -- Ejecución del programa con gráficos
-  putStrLn "Cargando..."
-  playIO ventanaJuego fondo tasaDeRefresco inicial dibujaMundo manejaEntrada actualiza
-  putStrLn "¡Gracias por jugar!"
+  playIO ventanaJuego fondo tasaDeRefresco menuInicial dibujaMundo manejaEntrada actualiza
 
 {- +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 Funciones para los gráficos
@@ -37,9 +35,6 @@ fondo = dark yellow
 -- Cuantas veces se actualiza el dibujo cada segundo
 tasaDeRefresco :: Int
 tasaDeRefresco = 1
-
-inicial :: Mundo
-inicial = (tableroVacio "menu", "menu", 0, 0, "menu", 0, "", False, [["nada"]])
 
 dibujaMundo :: Mundo -> IO Picture
 dibujaMundo mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, seleccionado, esMaquina, adicional)
@@ -160,7 +155,7 @@ pintaJuego juego mundo@(mov@(estado, pos), j, dif, prof, marca, turno, seleccion
 -- ---------------------------------------------------------------------------------
 hazMovimiento :: Point -> Mundo -> IO Mundo
 hazMovimiento raton mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, seleccionado, esMaquina, adicional)
-  | esEstadoFinal estado juego = return inicial
+  | esEstadoFinal estado juego = return menuInicial
   | esMaquina = return mundo
   | juego == "3enRaya" = hazMovimiento3enRaya raton mundo
   | juego == "gato" = hazMovimientoGato raton mundo
@@ -185,18 +180,3 @@ mueveMaquina mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, seleccion
     parte2 = " no se valora como opción posible."
 
 -- ---------------------------------------------------------------------------------
-
-{- +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-Funciones auxiliares de los gráficos
-+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ -}
-
--- Lista de los juegos aceptados
-listaDeJuegos :: [String]
-listaDeJuegos = ["3 En Raya", "El gato y el raton", "Damas Espanyolas"]
-
-ordenJuegos :: Point
-ordenJuegos = (220.0, -40.0)
-
--- Mundo para cambiar a las opciones de un juego cuando este se ha seleccionado
-iniciaOpciones :: String -> Mundo
-iniciaOpciones juego = (tableroVacio "opciones", juego, 0, 0, "opciones", 0, "", False, [["nada"]])

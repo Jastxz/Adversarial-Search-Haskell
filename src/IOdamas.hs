@@ -61,14 +61,14 @@ pintaOpcionesDamas mundo@(m@(e, p), juego, dif, prof, marca, turno, seleccionado
   -- Receptáculo para mostrar las opciones
   let borde = rectangleWire 1000 500
   -- Dibujando los niveles de dificultad
-  let tituloDif = translate inicioCasillas (head alturasCasillas) $ texto "Dificultad"
+  let tituloDif = translate inicioCasillas (head alturasCasillas) $ texto "Level"
   let nivelesDif = head infoEstatica
   let niveles = translate 0 (alturasCasillas !! 1) $ pictures $ listaTextos nivelesDif 'X' inicioCasillas evolucionCasillas False
   let lNiveles = length nivelesDif
   let cbx1 = pictures $ dibujaCheckbox (lNiveles - 1) dif 'X' inicioCasillas evolucionCasillas
   let checkboxNiveles = translate 0 (alturasCasillas !! 2) cbx1
   -- Dibujando los turnos y las marcas
-  let tituloMarca = translate inicioCasillas (alturasCasillas !! 3) $ texto "Jugar como"
+  let tituloMarca = translate inicioCasillas (alturasCasillas !! 3) $ texto "Play as"
   let marcasPosibles = infoEstatica !! 1
   let marcas = translate 0 (alturasCasillas !! 4) $ pictures $ listaTextos marcasPosibles 'X' inicioCasillas evolucionCasillas False
   let lMarcas = length marcasPosibles
@@ -78,12 +78,14 @@ pintaOpcionesDamas mundo@(m@(e, p), juego, dif, prof, marca, turno, seleccionado
   let cbx2 = pictures $ dibujaCheckbox (lMarcas - 1) mrc 'X' inicioCasillas evolucionCasillas
   let checkboxMarcas = translate 0 (alturasCasillas !! 5) cbx2
   -- Preparamos los botones y la lista para crear la imagen
+  let (mX, mY) = posMenu
+  let menu = translate mX mY $ boton "Main menu" anchoBoton altoBoton
   let (cX, cY) = posCargar
-  let cargar = translate cX cY $ boton "Cargar" anchoBoton altoBoton
+  let cargar = translate cX cY $ boton "Load" anchoBoton altoBoton
   let (bX, bY) = posBoton
-  let btn = translate bX bY $ boton "Comenzar" anchoBoton altoBoton
+  let btn = translate bX bY $ boton "Start" anchoBoton altoBoton
   let listaRes1 = [borde, tituloDif, niveles, checkboxNiveles, tituloMarca]
-  let listaRes2 = [marcas, checkboxMarcas, cargar, btn]
+  let listaRes2 = [marcas, checkboxMarcas, menu, cargar, btn]
   let listaRes = listaRes1 ++ listaRes2
   -- Resultado
   let res = pictures listaRes
@@ -104,11 +106,13 @@ manejaOpcionesDamas raton@(x, y) mundo@(mov@(estado, pos), juego, dif, prof, mar
   let columna
         | indice == 99 || indice2 == 99 = head fila
         | otherwise = fila !! indice2
+  let menu = pulsaCerca raton posMenu
   let cargar = pulsaCerca raton posCargar
   let comenzar = pulsaCerca raton posBoton
   -- Cambiamos la información del juego a ejecutar y preparamos el tablero inicial
   nuevoMundo@(m, j, d, p, ma, t, s, e, ad) <- cambiaOpcion raton mundo indice columna
   let mundoAejecutar
+        | menu = menuInicial
         | cargar = menuCargarPartida
         | comenzar = creaTableroConOpciones nuevoMundo
         | otherwise = nuevoMundo
@@ -120,8 +124,8 @@ pintaJuegoDamas mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, selecc
   let alturaMensajes = ancho + 50
   -- Texto de turno
   let mensajeTurno
-        | esMaquina = "Le toca a la maquina"
-        | otherwise = "Tu turno"
+        | esMaquina = "Machine's turn"
+        | otherwise = "Your turn"
   let turno = translate (- correccionPosicion2 ancho) alturaMensajes $ texto mensajeTurno
   -- Dibujo del tablero
   let borde = rectangleWire tamTablero tamTablero
@@ -147,42 +151,56 @@ pintaJuegoDamas mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, selecc
   let estadoDibujado = pictures marcasDibujadas
   -- Texto indicativo
   let mensajeIndicativo
-        | esMaquina = "Espere un momento..."
-        | seleccionado /= "" && null posicionesValidas = "No puede mover esta ficha si hay otra que puede atacar"
-        | seleccionado /= "" = "Pulse en una casilla vacia valida para mover la ficha"
-        | otherwise = "Pulse en una ficha para seleccionarla"
+        | esMaquina = "Wait a moment..."
+        | seleccionado /= "" && null posicionesValidas = "You can not move this tab if exist another that can atack"
+        | seleccionado /= "" = "Click on a valid empty box to move the tab"
+        | otherwise = "Click a tab to select it"
   let indicacion = translate (- correccionPosicion (1.25 * tamTablero)) (- alturaMensajes) $ texto mensajeIndicativo
   -- Botones para guardar y cargar partidas
+  let (oX, oY) = posOpciones
+  let opciones = translate oX oY $ boton "Options" anchoBoton altoBoton
   let (cX, cY) = posCargarJuego
-  let cargar = translate cX cY $ boton "Cargar" anchoBoton altoBoton
+  let cargar = translate cX cY $ boton "Load" anchoBoton altoBoton
   let (gX, gY) = posGuardarJuego
-  let guardar = translate gX gY $ boton "Guardar" anchoBoton altoBoton
+  let guardar = translate gX gY $ boton "Save" anchoBoton altoBoton
+  let (vX, vY) = posVolver
+  let volver = translate vX vY $ boton "Back" anchoBoton altoBoton
   -- Resultado
-  let res = pictures [turno, borde, cuadradosDibujados, estadoDibujado, indicacion, cargar, guardar]
+  let res = pictures [turno, borde, cuadradosDibujados, estadoDibujado, indicacion, opciones, cargar, guardar, volver]
   return res
 
 hazMovimientoDamas :: Point -> Mundo -> IO Mundo
 hazMovimientoDamas raton mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, seleccionado, esMaquina, adicional) = do
+  -- Preparamos el acceso al archivo temporal
+  caminoPartidas <- directorioPartidas
+  let caminoTemporal = caminoPartidas ++ "/" ++ "temporal.txt"
   -- Casillas donde puede haber pulsado el jugador para interaccionar con el juego
   let posCasillas = casillasBlancas
   -- Comprobamos si ha pulsado cerca de alguna casilla para realizar una acción de juego
   let pulsadas = [casilla | casilla <- posCasillas, pulsaCasilla casilla raton]
+  let opciones = pulsaCerca raton posOpciones
   let cargar = pulsaCerca raton posCargarJuego
   let guardar = pulsaCerca raton posGuardarJuego
+  let volver = pulsaCerca raton posVolver
   -- Finalmente realizamos la acción en caso de que la hubiera y fuera realizable ó simplemente no devolvemos nada nuevo
   if not (null pulsadas)
     then do
+      -- Guardamos el estado actual en un archivo temporal
+      temporalPartida mundo
+      -- Continuamos con la acción
       let accion = head pulsadas
       calculaNuevoEstado accion mundo
-    else
-      if cargar || guardar
+    else do
+      mundoTemporal <- cargarPartida caminoTemporal
+      let nuevoMundo | opciones = iniciaOpciones juego
+            | cargar = menuCargarPartida
+            | volver = mundoTemporal
+            | otherwise = mundo
+      if guardar
         then do
-          if cargar
-            then return menuCargarPartida
-            else do
-              guardarPartida mundo
-              return mundo
-        else return mundo
+          guardarPartida mundo
+          return mundo
+        else return nuevoMundo
 
 {- Función para el turno de la máquina -}
 mueveMaquinaDamas :: Mundo -> IO Mundo

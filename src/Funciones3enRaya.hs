@@ -20,12 +20,13 @@ module Funciones3enRaya
     alturasEstaticas,
     cambiaOpcion,
     creaTableroConOpciones,
+    posMenu,
+    posOpciones,
     posCargar,
     posCargarJuego,
     posGuardarJuego,
+    posVolver,
     posBoton,
-    anchoBoton,
-    altoBoton,
     pintaMarca,
   )
 where
@@ -107,8 +108,8 @@ distribucionOpciones = (-450.0, 130.0)
 infoEstatica :: [[String]]
 infoEstatica = [dif, turnos, marcas]
   where
-    dif = ["Aleatoria", "Mínima", "Fácil", "Normal", "Difícil"]
-    turnos = ["Primero", "Segundo"]
+    dif = ["Random", "Lowest", "Easy", "Medium", "Hard"]
+    turnos = ["First", "Second"]
     marcas = ["X", "O"]
 
 alturasEstaticas :: [Float]
@@ -117,6 +118,12 @@ alturasEstaticas = [dif, turnos, marcas]
     dif = alturasCasillas !! 2
     turnos = alturasCasillas !! 5
     marcas = alturasCasillas !! 8
+
+posMenu :: Point
+posMenu = ((- ancho) - 2*ajusteInicial, ancho + ajusteInicial/2)
+
+posOpciones :: Point
+posOpciones = ((- ancho) - 2*ajusteInicial, ancho)
 
 posCargar :: Point
 posCargar = (ancho - ajusteInicial/2, - ancho + ajusteInicial)
@@ -127,14 +134,11 @@ posCargarJuego = ((- ancho) - 2*ajusteInicial, 0)
 posGuardarJuego :: Point
 posGuardarJuego = (ancho + 2*ajusteInicial, 0)
 
+posVolver :: Point
+posVolver = (ancho + 2*ajusteInicial, ancho)
+
 posBoton :: Point
 posBoton = (ancho - ajusteInicial/2, (- ancho) + 2*ajusteInicial)
-
-anchoBoton :: Float
-anchoBoton = 130.0
-
-altoBoton :: Float
-altoBoton = 40.0
 -- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Fin parámetros %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 listaPosiciones :: [Point]
@@ -231,19 +235,19 @@ hay2EnRaya t pos = not (null fsx) || not (null csx) || not (null dsx)
 
 traduceDif :: String -> Int
 traduceDif dif
-  | dif == "Mínima" = 1
-  | dif == "Fácil" = 2
-  | dif == "Normal" = 3
-  | dif == "Difícil" = 4
+  | dif == "Lowest" = 1
+  | dif == "Easy" = 2
+  | dif == "Medium" = 3
+  | dif == "Hard" = 4
   | otherwise = 0
 
 traduceProf :: String -> Int
 traduceProf dif
-  | dif == "Aleatoria" = 1
-  | dif == "Mínima" = 1
+  | dif == "Random" = 1
+  | dif == "Lowest" = 1
   | otherwise = 9
 
 traduceTurnos :: String -> Int
 traduceTurnos turno
-  | turno == "Primero" = 1
+  | turno == "First" = 1
   | otherwise = 2

@@ -30,12 +30,13 @@ module FuncionesGato
     cambiaOpcion,
     creaTableroConOpciones,
     calculaNuevoEstado,
+    posMenu,
+    posOpciones,
     posCargar,
     posCargarJuego,
     posGuardarJuego,
+    posVolver,
     posBoton,
-    anchoBoton,
-    altoBoton,
     pintaComienzoTablero,
     pintaMarca,
   )
@@ -205,14 +206,20 @@ distribucionOpciones = (-450.0, 130.0)
 infoEstatica :: [[String]]
 infoEstatica = [dif, turnoYmarca]
   where
-    dif = ["Aleatoria", "Mínima", "Fácil", "Normal", "Difícil"]
-    turnoYmarca = ["R", "G"]
+    dif = ["Random", "Lowest", "Easy", "Medium", "Hard"]
+    turnoYmarca = ["Mouse", "Cats"]
 
 alturasEstaticas :: [Float]
 alturasEstaticas = [dif, turnosYmarcas]
   where
     dif = alturasCasillas !! 2
     turnosYmarcas = alturasCasillas !! 5
+
+posMenu :: Point
+posMenu = ((- ancho) - 3*ajusteInicial, ancho + ajusteInicial)
+
+posOpciones :: Point
+posOpciones = ((- ancho) - 4 * ajusteInicial, ancho)
 
 posCargar :: Point
 posCargar = (ancho - ajusteInicial / 2, - ancho + ajusteInicial)
@@ -223,15 +230,11 @@ posCargarJuego = ((- ancho) - 4 * ajusteInicial, 0)
 posGuardarJuego :: Point
 posGuardarJuego = (ancho + 4 * ajusteInicial, 0)
 
+posVolver :: Point
+posVolver = (ancho + 4 * ajusteInicial, ancho)
+
 posBoton :: Point
 posBoton = (ancho - ajusteInicial / 2, (- ancho) + 4 * ajusteInicial)
-
-anchoBoton :: Float
-anchoBoton = 130.0
-
-altoBoton :: Float
-altoBoton = 40.0
-
 -- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Fin parámetros %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 matrizPosiciones :: Matrix Point
@@ -290,7 +293,7 @@ cambiaOpcion raton@(x, y) mundo@(mov@(estado, pos), juego, dif, prof, marca, tur
     let nuevoMundo = (mov, juego, traduceDif opcion, traduceProf opcion, marca, turno, seleccionado, esMaquina, adicional)
     return nuevoMundo
   | nivel == 1 = do
-    let nuevoMundo = (mov, juego, dif, prof, opcion, turno, seleccionado, esMaquina, adicional)
+    let nuevoMundo = (mov, juego, dif, prof, traduceMarca opcion, turno, seleccionado, esMaquina, adicional)
     return nuevoMundo
   | nivel == 99 = do
     let ratonCorregido = (x, y - alturaTablero)
@@ -423,19 +426,25 @@ cerosEnCadena d = "0" ++ cerosEnCadena (d -1)
 
 traduceDif :: String -> Int
 traduceDif dif
-  | dif == "Mínima" = 1
-  | dif == "Fácil" = 2
-  | dif == "Normal" = 3
-  | dif == "Difícil" = 4
+  | dif == "Lowest" = 1
+  | dif == "Easy" = 2
+  | dif == "Medium" = 3
+  | dif == "Hard" = 4
   | otherwise = 0
 
 traduceProf :: String -> Int
 traduceProf dif
-  | dif == "Mínima" = 1
-  | dif == "Fácil" = 5
-  | dif == "Normal" = 8
-  | dif == "Difícil" = 9
+  | dif == "Lowest" = 1
+  | dif == "Easy" = 5
+  | dif == "Medium" = 8
+  | dif == "Hard" = 9
   | otherwise = 1
+
+traduceMarca :: String -> String
+traduceMarca marca
+  | marca == "Mouse" = "R"
+  | marca == "Cats" = "G"
+  | otherwise = "Fallo"
 
 turnoApos :: Int -> Pos
 turnoApos turno
