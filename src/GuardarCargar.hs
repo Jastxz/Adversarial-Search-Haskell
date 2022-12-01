@@ -2,10 +2,10 @@ module GuardarCargar
   ( menuCargarPartida,
     cargarPartida,
     guardarPartida,
+    temporalPartida,
     pintaMenuCarga,
     escogePartida,
-    stringToLista,
-    stringToPos,
+    directorioPartidas,
   )
 where
 
@@ -16,6 +16,8 @@ import System.Directory
 import Tipos
 import Utiles
 import UtilesGraficos
+import Control.Exception (evaluate)
+import Control.DeepSeq (force)
 
 {- +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 Funciones constantes
@@ -33,11 +35,16 @@ Funciones de trabajo
 
 cargarPartida :: String -> IO Mundo
 cargarPartida caminoArchivo = do
-  contenido <- readFile caminoArchivo
-  let lineas = lines contenido
-  if null lineas
-    then error $ "Archivo pasado a la funcion cargaPartida vacio. Path: " ++ caminoArchivo
-    else sacaContenido lineas
+  existe <- doesFileExist caminoArchivo
+  if existe
+    then do
+      contenido <- readFile caminoArchivo
+      evaluate (force contenido)
+      let lineas = lines contenido
+      if null lineas
+        then error $ "Archivo pasado a la funcion cargaPartida vacio. Path: " ++ caminoArchivo
+        else sacaContenido lineas
+    else return menuInicial
 
 guardarPartida :: Mundo -> IO Mundo
 guardarPartida mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, seleccionado, esMaquina, adicional) = do
@@ -58,6 +65,20 @@ guardarPartida mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, selecci
       let parte1 = "No se ha podido crear el guardado de partida con nombre: "
       let parte2 = nombreArchivo ++ " y contenido: " ++ contenidoArchivo
       error $ parte1 ++ parte2
+
+temporalPartida :: Mundo -> IO()
+temporalPartida mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, seleccionado, esMaquina, adicional) = do
+  preparaDirectorios
+  caminoPartidas <- directorioPartidas
+  let nombreArchivo = caminoPartidas ++ "/" ++ "temporal.txt"
+  let contenidoArchivo = creaContenido mundo
+  existe <- doesFileExist nombreArchivo
+  if existe
+    then do
+      removeFile nombreArchivo
+      writeFile nombreArchivo contenidoArchivo
+    else do
+      writeFile nombreArchivo contenidoArchivo
 
 creaContenido :: Mundo -> String
 creaContenido mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, seleccionado, esMaquina, adicional) = contenido

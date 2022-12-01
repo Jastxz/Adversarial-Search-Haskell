@@ -13,12 +13,12 @@ import Data.Matrix
 import Funciones3enRaya
 import Graphics.Gloss
 import Graphics.Gloss.Interface.IO.Game
-import Tipos
-import Utiles
-import UtilesGraficos
 import GuardarCargar
 import Interconexion
 import MiniMax
+import Tipos
+import Utiles
+import UtilesGraficos
 
 {- +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 Funciones de uso de algoritmo
@@ -59,14 +59,14 @@ pintaOpciones3enRaya mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, s
   -- Receptáculo para mostrar las opciones
   let borde = rectangleWire 1000 500
   -- Dibujando los niveles de dificultad
-  let tituloDif = translate inicioCasillas (head alturasCasillas) $ texto "Dificultad"
+  let tituloDif = translate inicioCasillas (head alturasCasillas) $ texto "Level"
   let nivelesDif = head infoEstatica
   let niveles = translate 0 (alturasCasillas !! 1) $ pictures $ listaTextos nivelesDif 'X' inicioCasillas evolucionCasillas False
   let lNiveles = length nivelesDif
   let cbx1 = pictures $ dibujaCheckbox (lNiveles - 1) dif 'X' inicioCasillas evolucionCasillas
   let checkboxNiveles = translate 0 (alturasCasillas !! 2) cbx1
   -- Dibujando los turnos a escoger
-  let tituloTurno = translate inicioCasillas (alturasCasillas !! 3) $ texto "Turno"
+  let tituloTurno = translate inicioCasillas (alturasCasillas !! 3) $ texto "Turn"
   let turnosPosibles = infoEstatica !! 1
   let turnos = translate 0 (alturasCasillas !! 4) $ pictures $ listaTextos turnosPosibles 'X' inicioCasillas evolucionCasillas False
   let lTurnos = length turnosPosibles
@@ -76,7 +76,7 @@ pintaOpciones3enRaya mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, s
   let cbx2 = pictures $ dibujaCheckbox (lTurnos - 1) tur 'X' inicioCasillas evolucionCasillas
   let checkboxTurnos = translate 0 (alturasCasillas !! 5) cbx2
   -- Dibujando las marcas posibles
-  let tituloMarca = translate inicioCasillas (alturasCasillas !! 6) $ texto "Signo"
+  let tituloMarca = translate inicioCasillas (alturasCasillas !! 6) $ texto "Mark"
   let marcasPosibles = infoEstatica !! 2
   let marcas = translate 0 (alturasCasillas !! 7) $ pictures $ listaTextos marcasPosibles 'X' inicioCasillas evolucionCasillas False
   let numMarca
@@ -85,12 +85,14 @@ pintaOpciones3enRaya mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, s
   let cbx3 = pictures $ dibujaCheckbox (lTurnos - 1) numMarca 'X' inicioCasillas evolucionCasillas
   let checkboxMarcas = translate 0 (alturasCasillas !! 8) cbx3
   -- Preparamos los botones y la lista para crear la imagen
+  let (mX, mY) = posMenu
+  let menu = translate mX mY $ boton "Main menu" anchoBoton altoBoton
   let (cX, cY) = posCargar
-  let cargar = translate cX cY $ boton "Cargar" anchoBoton altoBoton
+  let cargar = translate cX cY $ boton "Load game" anchoBoton altoBoton
   let (bX, bY) = posBoton
-  let btn = translate bX bY $ boton "Comenzar" anchoBoton altoBoton
+  let btn = translate bX bY $ boton "Start" anchoBoton altoBoton
   let listaRes1 = [borde, tituloDif, niveles, checkboxNiveles, tituloTurno, turnos, checkboxTurnos]
-  let listaRes2 = [tituloMarca, marcas, checkboxMarcas, cargar, btn]
+  let listaRes2 = [tituloMarca, marcas, checkboxMarcas, menu, cargar, btn]
   let listaRes = listaRes1 ++ listaRes2
   -- Resultado
   let res = pictures listaRes
@@ -111,6 +113,7 @@ manejaOpciones3enRaya raton@(x, y) mundo@(mov@(estado, pos), juego, dif, prof, m
   let columna
         | indice2 == 99 = head fila
         | otherwise = fila !! indice2
+  let menu = pulsaCerca raton posMenu
   let cargar = pulsaCerca raton posCargar
   let comenzar = pulsaCerca raton posBoton
   -- Cambiamos la información del juego a ejecutar y preparamos el tablero inicial
@@ -118,6 +121,7 @@ manejaOpciones3enRaya raton@(x, y) mundo@(mov@(estado, pos), juego, dif, prof, m
         | indice == 99 || indice2 == 99 = mundo
         | otherwise = cambiaOpcion mundo indice columna
   let mundoAejecutar
+        | menu = menuInicial
         | cargar = menuCargarPartida
         | comenzar = creaTableroConOpciones nuevoMundo
         | otherwise = nuevoMundo
@@ -129,8 +133,8 @@ pintaJuego3enRaya mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, sele
   let alturaMensajes = ancho + 50
   -- Texto de turno
   let mensajeTurno
-        | esMaquina = "Le toca a la máquina"
-        | otherwise = "Tu turno"
+        | esMaquina = "Machine's turn"
+        | otherwise = "Your turn"
   let turno = translate (- correccionPosicion2 ancho) alturaMensajes $ texto mensajeTurno
   -- Dibujo del tablero
   let borde = rectangleWire tamTablero tamTablero
@@ -144,31 +148,43 @@ pintaJuego3enRaya mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, sele
   let estadoDibujado = pictures marcasDibujadas
   -- Texto indicativo
   let mensajeIndicativo
-        | esMaquina = "Espere un momento..."
-        | otherwise = "Pulse en una casilla vacía para realizar su turno"
+        | esMaquina = "Wait a moment please..."
+        | otherwise = "Click on an empty box to take your turn"
   let indicacion = translate (- correccionPosicion (1.25 * tamTablero)) (- alturaMensajes) $ texto mensajeIndicativo
   -- Botones para guardar y cargar partidas
+  let (oX, oY) = posOpciones
+  let opciones = translate oX oY $ boton "Options" anchoBoton altoBoton
   let (cX, cY) = posCargarJuego
-  let cargar = translate cX cY $ boton "Cargar" anchoBoton altoBoton
+  let cargar = translate cX cY $ boton "Load" anchoBoton altoBoton
   let (gX, gY) = posGuardarJuego
-  let guardar = translate gX gY $ boton "Guardar" anchoBoton altoBoton
+  let guardar = translate gX gY $ boton "Save" anchoBoton altoBoton
+  let (vX, vY) = posVolver
+  let volver = translate vX vY $ boton "Back" anchoBoton altoBoton
   -- Resultado
-  let res = pictures [turno, casillas, estadoDibujado, indicacion, cargar, guardar]
+  let res = pictures [turno, casillas, estadoDibujado, indicacion, opciones, cargar, guardar, volver]
   return res
 
 hazMovimiento3enRaya :: Point -> Mundo -> IO Mundo
 hazMovimiento3enRaya raton mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, seleccionado, esMaquina, adicional) = do
+  -- Preparamos el acceso al archivo temporal
+  caminoPartidas <- directorioPartidas
+  let caminoTemporal = caminoPartidas ++ "/" ++ "temporal.txt"
   -- Casillas donde puede haber pulsado el jugador para interaccionar con el juego
   let posCasillas = toList matrizPosiciones
   -- Comprobamos si ha pulsado cerca de alguna casilla para realizar una acción de juego
   let pulsadas = [casilla | casilla <- posCasillas, pulsaCasilla casilla raton]
   let accion = head pulsadas
   let posiblesAcciones = map (matrizPosiciones !) (casillasVacias estado)
+  let opciones = pulsaCerca raton posOpciones
   let cargar = pulsaCerca raton posCargarJuego
   let guardar = pulsaCerca raton posGuardarJuego
+  let volver = pulsaCerca raton posVolver
   -- Finalmente realizamos la acción en caso de que la hubiera y fuera realizable ó simplemente no devolvemos nada nuevo
   if not (null pulsadas) && (accion `elem` posiblesAcciones)
     then do
+      -- Guardamos el estado actual en un archivo temporal
+      temporalPartida mundo
+      -- Continuamos con la acción
       let t = round tamMatriz
       let posPosibles = [(f, c) | f <- [1 .. t], c <- [1 .. t]]
       let relacion = zip (toList matrizPosiciones) posPosibles
@@ -179,15 +195,17 @@ hazMovimiento3enRaya raton mundo@(mov@(estado, pos), juego, dif, prof, marca, tu
             | hay3EnRaya nuevoEstado = [["humano"]]
             | otherwise = adicional
       return ((nuevoEstado, posNueva), juego, dif, prof, marca, turno, seleccionado, True, ad)
-    else
-      if cargar || guardar
+    else do
+      mundoTemporal <- cargarPartida caminoTemporal
+      let nuevoMundo | opciones = iniciaOpciones juego
+            | cargar = menuCargarPartida
+            | volver = mundoTemporal
+            | otherwise = mundo
+      if guardar
         then do
-          if cargar
-            then return menuCargarPartida
-            else do
-              guardarPartida mundo
-              return mundo
-        else return mundo
+          guardarPartida mundo
+          return mundo
+        else return nuevoMundo
 
 {- Función para el turno de la máquina -}
 mueveMaquina3enRaya :: Mundo -> IO Mundo

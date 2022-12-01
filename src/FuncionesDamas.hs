@@ -35,12 +35,13 @@ module FuncionesDamas
     creaTableroConOpciones,
     calculaNuevoEstado,
     casillasDisponiblesParaElJugador,
+    posMenu,
+    posOpciones,
     posCargar,
     posCargarJuego,
     posGuardarJuego,
+    posVolver,
     posBoton,
-    anchoBoton,
-    altoBoton,
     pintaMarca,
   )
 where
@@ -381,14 +382,20 @@ distribucionOpciones = (-450.0, 130.0)
 infoEstatica :: [[String]]
 infoEstatica = [dif, turnoYmarca]
   where
-    dif = ["Aleatoria", "Mínima", "Fácil", "Normal", "Difícil"]
-    turnoYmarca = ["B", "N"]
+    dif = ["Random", "Lowest", "Easy", "Medium", "Hard"]
+    turnoYmarca = ["White", "Black"]
 
 alturasEstaticas :: [Float]
 alturasEstaticas = [dif, turnosYmarcas]
   where
     dif = alturasCasillas !! 2
     turnosYmarcas = alturasCasillas !! 5
+
+posMenu :: Point
+posMenu = ((- ancho) - 3*ajusteInicial, ancho + ajusteInicial)
+
+posOpciones :: Point
+posOpciones = ((- ancho) - 4 * ajusteInicial, ancho)
 
 posCargar :: Point
 posCargar = (ancho - ajusteInicial / 2, - ancho + ajusteInicial)
@@ -399,15 +406,11 @@ posCargarJuego = ((- ancho) - 4 * ajusteInicial, 0)
 posGuardarJuego :: Point
 posGuardarJuego = (ancho + 4 * ajusteInicial, 0)
 
+posVolver :: Point
+posVolver = (ancho + 4 * ajusteInicial, ancho)
+
 posBoton :: Point
 posBoton = (ancho - ajusteInicial / 2, (- ancho) + 4 * ajusteInicial)
-
-anchoBoton :: Float
-anchoBoton = 130.0
-
-altoBoton :: Float
-altoBoton = 40.0
-
 -- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Fin parámetros %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 matrizPosiciones :: Matrix Point
@@ -466,7 +469,7 @@ cambiaOpcion raton mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, sel
     let nuevoMundo = (mov, juego, traduceDif opcion, traduceProf opcion, marca, turno, seleccionado, esMaquina, adicional)
     return nuevoMundo
   | nivel == 1 = do
-    let nuevoMundo = (mov, juego, dif, prof, opcion, turno, seleccionado, esMaquina, adicional)
+    let nuevoMundo = (mov, juego, dif, prof, traduceMarca opcion, turno, seleccionado, esMaquina, adicional)
     return nuevoMundo
   | nivel == 99 = return mundo
   | otherwise = error "El nivel de opciones especificado para la función cambiaOpción del juego del gato no existe."
@@ -489,19 +492,7 @@ calculaNuevoEstado casilla mundo@(mov@(estado, pos), juego, dif, prof, marca, tu
     calculaMundo posSeñalada mundo
   | ((marca == "B") && elBlancas) || ((marca == "N") && elNegras) = do
     return (mov, juego, dif, prof, marca, turno, el, False, adicional)
-  | otherwise = do
-    let (mi, ma) = rangos estado
-    let resultados = [revisaDiagonalio estado posPieza (a, b) seleccionado ([], False) | a <- [mi, ma], b <- [mi, ma]]
-    a1 <- head resultados
-    a2 <- resultados !! 1
-    a3 <- resultados !! 2
-    a4 <- resultados !! 3
-    print "-----------------------Diagonalio y casillas validas-----------------------------"
-    print posPieza
-    print $ show a1 ++ show a2 ++ show a3 ++ show a4
-    print validasDamas
-    print validasReinas
-    return mundo
+  | otherwise = return mundo
   where
     -- Inicializamos los datos que no tenemos aún y que vamos a necesitar
     t = round tamMatriz
@@ -548,49 +539,6 @@ casillasDisponiblesParaElJugador ((estado, _), _, _, _, marca, _, seleccionado, 
       | not (snd casillasReina) && atacanReinas = []
       | not (snd casillasReina) && atacanDamas = []
       | otherwise = fst casillasReina
-
-revisaDiagonalio :: Tablero -> Pos -> Pos -> String -> ([Pos], Bool) -> IO ([Pos], Bool)
-revisaDiagonalio m p@(f, c) lims@(a, b) pieza (ps, at)
-  | not (dentroDelTablero p m) = error mensajeError
-  | mismoNombre && dentroDelTablero pos m = do
-    print "pasa por el primero"
-    revisaDiagonalio m pos lims pieza (ps, at)
-  | tocaLimite && casillaVacia m p = do
-    print "lo devuelve con casilla vacia"
-    return (p : ps, at)
-  | tocaLimite || mismoBando || (bandoContrario && not ataca) = do
-    print "lo devuelve del tiron"
-    return (ps, at)
-  | ataca || at = do
-    print "ha habido un ataque"
-    return (pAtacadas, True)
-  | otherwise = do
-    print "pasa por otherwise"
-    revisaDiagonalio m pos lims pieza (p : ps, at)
-  where
-    mensajeError = "La posicion pasada de la pieza en revisaDiagonal es " ++ show p ++ "que esta fuera del tablero."
-    tocaLimite = f == a || c == b
-    nombre = m ! p
-    mismoNombre = nombre == pieza
-    bandoActual = bando nombre
-    bandoPieza = bando pieza
-    mismoBando = bandoActual == bandoPieza
-    bandoContrario = (bandoActual == 'B' && bandoPieza == 'N') || (bandoActual == 'N' && bandoPieza == 'B')
-    diferenciaFila = f - a
-    diferenciaColumna = c - b
-    filaE
-      | diferenciaFila < 0 = f + 1
-      | diferenciaFila > 0 = f - 1
-      | otherwise = 0
-    columnaE
-      | diferenciaColumna < 0 = c + 1
-      | diferenciaColumna > 0 = c - 1
-      | otherwise = 0
-    pos = (filaE, columnaE)
-    ataca = bandoContrario && dentroDelTablero pos m && casillaVacia m pos
-    pAtacadas
-      | ataca && at = pos : ps
-      | otherwise = [pos]
 
 calculaMundo :: Pos -> Mundo -> IO Mundo
 calculaMundo casilla ((estado, pos), juego, dif, prof, marca, turno, seleccionado, esMaquina, adicional) = do
@@ -721,19 +669,25 @@ cerosEnCadena d = "0" ++ cerosEnCadena (d -1)
 
 traduceDif :: String -> Int
 traduceDif dif
-  | dif == "Mínima" = 1
-  | dif == "Fácil" = 2
-  | dif == "Normal" = 3
-  | dif == "Difícil" = 4
+  | dif == "Lowest" = 1
+  | dif == "Easy" = 2
+  | dif == "Medium" = 3
+  | dif == "Hard" = 4
   | otherwise = 0
 
 traduceProf :: String -> Int
 traduceProf dif
-  | dif == "Mínima" = 1
-  | dif == "Fácil" = 2
-  | dif == "Normal" = 4
-  | dif == "Difícil" = 5
+  | dif == "Lowest" = 1
+  | dif == "Easy" = 2
+  | dif == "Medium" = 4
+  | dif == "Hard" = 5
   | otherwise = 1
+
+traduceMarca :: String -> String
+traduceMarca marca
+  | marca == "White" = "B"
+  | marca == "Black" = "N"
+  | otherwise = "Fallo"
 
 pintaBlanca :: Point -> Picture
 pintaBlanca (x, y) = translate x y dama

@@ -1,12 +1,18 @@
 module UtilesGraficos
   ( -- 'Constantes' y colores
+    listaDeJuegos,
+    ordenJuegos,
     posListaDeJuegos,
     tamCheckbox,
+    anchoBoton,
+    altoBoton,
     correccionPosicion,
     correccionPosicion2,
     texto,
     marron,
+    menuInicial,
     -- Funciones
+    iniciaOpciones,
     listaTextos,
     dibujaCheckbox,
     boton,
@@ -27,11 +33,24 @@ import Graphics.Gloss.Interface.IO.Game
 import Tipos
 import Utiles
 
+-- Lista de los juegos aceptados
+listaDeJuegos :: [String]
+listaDeJuegos = ["Tic-tac-toe", "Cats VS Mouse", "Spanish checkers"]
+
+ordenJuegos :: Point
+ordenJuegos = (220.0, -40.0)
+
 posListaDeJuegos :: Float
 posListaDeJuegos = -140.0
 
 tamCheckbox :: Float
 tamCheckbox = 10.0
+
+anchoBoton :: Float
+anchoBoton = 150.0
+
+altoBoton :: Float
+altoBoton = 40.0
 
 correccionPosicion :: Float -> Float
 correccionPosicion ancho = ancho / 2.0
@@ -44,6 +63,13 @@ texto = scale 0.2 0.2 . color black . text
 
 marron :: Color
 marron = makeColorI 140 76 0 255
+
+menuInicial :: Mundo
+menuInicial = (tableroVacio "menu", "menu", 0, 0, "menu", 0, "", False, [["nada"]])
+
+-- Mundo para cambiar a las opciones de un juego cuando este se ha seleccionado
+iniciaOpciones :: String -> Mundo
+iniciaOpciones juego = (tableroVacio "opciones", juego, 0, 0, "opciones", 0, "", False, [["nada"]])
 
 listaTextos :: [String] -> Char -> Float -> Float -> Bool -> [Picture]
 listaTextos [] _ _ _ _ = []
