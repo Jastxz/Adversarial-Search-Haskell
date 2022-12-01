@@ -154,7 +154,7 @@ compruebaAtaque :: Tablero -> Char -> Pos -> Pos -> Bool
 compruebaAtaque m bandoP posPieza@(f, c) posAtaque@(af, ac) = condiciones
   where
     reina = esReina $ m ! posPieza
-    (posEliminada, _) = ataque posPieza posAtaque reina
+    (posEliminada, _) = ataque m posPieza posAtaque reina
     piezaEliminada = m ! posEliminada
     bandoE = bando piezaEliminada
     bandoContrario = (bandoE == 'B' && bandoP == 'N') || (bandoE == 'N' && bandoP == 'B')
@@ -260,37 +260,34 @@ mueveReina t (r : rs, at) movs
 
 atacaOintercambia :: Tablero -> String -> Pos -> Pos -> Movimientos
 atacaOintercambia t nombre posNueva posAntigua
-  | ataca && reina = atacaPieza nuevoT nuevoNombre posNueva reina
-  | ataca && not reina = atacaPieza nuevoT nuevoNombre posNueva reina
+  | ataca = atacaPieza nuevoT nuevoNombre posNueva reina
   | otherwise = [(nuevoT, posNueva)]
   where
-    (posPiezaEliminada, ataca) = ataque posNueva posAntigua (esReina nombre)
+    (posPiezaEliminada, ataca) = ataque t posAntigua posNueva (esReina nombre)
     nuevoNombre = nombreActualizado t nombre posNueva
-    reina = cabeza "atacaOintercambia" nuevoNombre == 'R'
+    reina = esReina nuevoNombre
     t' = intercambiaPieza t nuevoNombre posNueva posAntigua
     nuevoT
       | ataca = eliminaPieza t' posPiezaEliminada
       | otherwise = t'
 
 atacaPieza :: Tablero -> String -> Pos -> Bool -> Movimientos
-atacaPieza t nombre p@(f, c) esReina
+atacaPieza t nombre p@(f, c) reina
   | null casillasAtaque = [(t, p)]
-  | not esReina && (null casillasAtaque || null casillas) = [(t, p)]
-  | otherwise = concatMap (\v -> atacaOintercambia t nuevoNombre v p) validas
+  | not reina && (null casillasAtaque || null casillas) = [(t, p)]
+  | otherwise = concatMap (\v -> atacaOintercambia t nombre v p) validas
   where
-    nuevoNombre = nombreActualizado t nombre p
-    cab = cabeza "atacaPieza" nuevoNombre
-    bandoP = bando nuevoNombre
+    bandoP = bando nombre
     casillasAtaque = calculaCasillasAtaque t bandoP p
     casillas
       | bandoP == 'B' = filter (\(i, j) -> i < f) casillasAtaque
       | otherwise = filter (\(i, j) -> i > f) casillasAtaque
     validas
-      | cab == 'R' = casillasAtaque
+      | esReina nombre = casillasAtaque
       | otherwise = casillas
 
-ataque :: Pos -> Pos -> Bool -> (Pos, Bool)
-ataque og@(x, y) atacada@(i, j) reina = (pos, ataca)
+ataque :: Tablero -> Pos -> Pos -> Bool -> (Pos, Bool)
+ataque t og@(x, y) atacada@(i, j) reina = (pos, ataca)
   where
     diferenciaFila = x - i
     diferenciaColumna = y - j
@@ -301,9 +298,11 @@ ataque og@(x, y) atacada@(i, j) reina = (pos, ataca)
       | diferenciaColumna < 0 = j -1
       | otherwise = j + 1
     pos = (filaE, columnaE)
+    piezaE = t ! pos
+    existe = piezaE /= "X" && piezaE /= "" && piezaE /= " "
     ataca
-      | reina = (abs diferenciaFila >= 2) || (abs diferenciaColumna >= 2)
-      | otherwise = (abs diferenciaFila == 2) || (abs diferenciaColumna == 2)
+      | reina = ((abs diferenciaFila >= 2) || (abs diferenciaColumna >= 2)) && existe
+      | otherwise = ((abs diferenciaFila == 2) || (abs diferenciaColumna == 2)) && existe
 
 -- Puntuaciones
 puntuaDamas :: Tablero -> Pos -> IO Double
@@ -328,11 +327,12 @@ puntuaDamas t pos = do
         | esBlanco = - (2.5 * nRN + nDN)
         | otherwise = 0.0
   let ataque = atacaPieza t pieza pos reina
-  let ataques = concatMap (\(nom,p) -> atacaPieza t nom p (esReina nom)) (piezasAlrededor t pos)
+  let ataques = concatMap (\(nom, p) -> atacaPieza t nom p (esReina nom)) (piezasAlrededor t pos)
   let puntuacionAtaca
         | null ataque = 0.0
         | otherwise = 2.0 * fromIntegral (length ataque)
-  let puntuacionAtacado | null ataques = 0.0
+  let puntuacionAtacado
+        | null ataques = 0.0
         | otherwise = -2.0
   let puntuacionFinal = puntuacionBlancas + puntuacionNegras + puntuacionAtaca + puntuacionAtacado
   let ganador = bandoGanador t vivas puntuacionFinal
@@ -342,13 +342,12 @@ puntuaDamas t pos = do
         | otherwise = 0.0
   return $ puntuacionFinal + puntuacionGanar
 
-piezasAlrededor :: Tablero -> Pos -> [(String,Pos)]
+piezasAlrededor :: Tablero -> Pos -> [(String, Pos)]
 piezasAlrededor t pos = nomsYps
   where
     posiciones = fichasAlrededorCasilla t pos
     nombres = map (t !) posiciones
     nomsYps = zip nombres posiciones
-
 
 {- +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 Funciones para los gráficos
@@ -500,8 +499,8 @@ calculaNuevoEstado casilla mundo@(mov@(estado, pos), juego, dif, prof, marca, tu
     print "-----------------------Diagonalio y casillas validas-----------------------------"
     print posPieza
     print $ show a1 ++ show a2 ++ show a3 ++ show a4
-    print $ casillasValidasDamas estado posPieza
-    print $ casillasValidasReinas estado posPieza
+    print validasDamas
+    print validasReinas
     return mundo
   where
     -- Inicializamos los datos que no tenemos aún y que vamos a necesitar
@@ -537,8 +536,10 @@ casillasDisponiblesParaElJugador ((estado, _), _, _, _, marca, _, seleccionado, 
     atacanReinas
       | any snd psYatsReinas = True
       | otherwise = False
-    casillasDama = casillasValidasDamas estado posPieza
-    casillasReina = casillasValidasReinas estado posPieza
+    casillasDama | null seleccionado = ([], False)
+      | otherwise = casillasValidasDamas estado posPieza
+    casillasReina | null seleccionado = ([], False)
+      | otherwise = casillasValidasReinas estado posPieza
     validasDamas
       | not (snd casillasDama) && atacanDamas = []
       | not (snd casillasDama) && atacanReinas = []
@@ -595,7 +596,7 @@ calculaMundo :: Pos -> Mundo -> IO Mundo
 calculaMundo casilla ((estado, pos), juego, dif, prof, marca, turno, seleccionado, esMaquina, adicional) = do
   let posAntigua = buscaPieza estado seleccionado
   let reina = esReina seleccionado
-  let (posEliminada, ataca) = ataque posAntigua casilla reina
+  let (posEliminada, ataca) = ataque estado posAntigua casilla reina
   let e
         | ataca = eliminaPieza estado posEliminada
         | otherwise = estado
@@ -730,7 +731,7 @@ traduceProf :: String -> Int
 traduceProf dif
   | dif == "Mínima" = 1
   | dif == "Fácil" = 2
-  | dif == "Normal" = 5
+  | dif == "Normal" = 4
   | dif == "Difícil" = 5
   | otherwise = 1
 

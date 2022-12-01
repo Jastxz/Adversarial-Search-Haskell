@@ -83,11 +83,12 @@ ratonEncerrado :: Tablero -> Pos -> Bool
 ratonEncerrado t pos = null (casillasVaciasRaton t pos)
 
 ratonEscapado :: Tablero -> Pos -> [Pos] -> Bool
-ratonEscapado t raton gatos = filaRaton > filaGato || filaRaton == ma
+ratonEscapado t raton gatos = filaRaton > filaGato || filaRaton == ma || null casGatos
   where
     filaRaton = fst raton
     filaGato = maximum $ map fst gatos
     (_, ma) = rangos t
+    casGatos = concatMap (casillasVaciasGatos t) gatos
 
 -- Movimientos
 casillasVaciasRaton :: Tablero -> Pos -> [Pos]
@@ -152,7 +153,7 @@ puntuaGato t pos = do
         | otherwise = 0.0
   let penalizacionDistanciaGatos
         | esRaton && perdido = maxDist
-        | esGatos && perdido = - (8.0 - abs (maxDist -adelantado)) * maxDist
+        | esGatos && perdido = - (8.0 - abs (maxDist - adelantado)) * maxDist
         | otherwise = 0.0
   let puntuacionBasica
         | haEscapado = puntuacionEscapado
@@ -432,7 +433,7 @@ traduceProf :: String -> Int
 traduceProf dif
   | dif == "Mínima" = 1
   | dif == "Fácil" = 5
-  | dif == "Normal" = 9
+  | dif == "Normal" = 8
   | dif == "Difícil" = 9
   | otherwise = 1
 
