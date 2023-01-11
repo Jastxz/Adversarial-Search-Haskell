@@ -94,8 +94,8 @@ finDamas t = (null dB && null rB) || (null dN && null rN) || null mvB || null mv
     mvB = movsDamas t "B"
     mvN = movsDamas t "N"
 
-bandoGanador :: Tablero -> [[String]] -> Double -> String
-bandoGanador t vivas punt
+bandoGanador :: Tablero -> [[String]] -> String
+bandoGanador t vivas
   | finNegras = "blancas"
   | finBlancas = "negras"
   | otherwise = "empate"
@@ -106,19 +106,18 @@ bandoGanador t vivas punt
     nRN = fromIntegral $ length $ vivas !! 3
     mvB = movsDamas t "B"
     mvN = movsDamas t "N"
-    hayBlancas = nDB > 0.0 && nRB > 0.0
-    noHayBlancas = nDB == 0.0 && nRB == 0.0
-    hayNegras = nDN > 0.0 && nRN > 0.0
-    noHayNegras = nDN == 0.0 && nRN == 0.0
+    hayBlancas = nDB > 0.0 || nRB > 0.0
+    hayNegras = nDN > 0.0 || nRN > 0.0
     noHayMovimientos = null mvB || null mvN
-    finBlancas = (noHayBlancas && hayNegras) || (noHayMovimientos && punt > 0)
-    finNegras = (noHayNegras && hayBlancas) || (noHayMovimientos && punt > 0)
+    desempate = nDB + nRB - nDN - nRN
+    finBlancas = (not hayBlancas && hayNegras) || (noHayMovimientos && desempate < 0)
+    finNegras = (not hayNegras && hayBlancas) || (noHayMovimientos && desempate > 0)
 
 -- Movimientos
 casillasValidasDamas :: Tablero -> Pos -> ([Pos], Bool)
 casillasValidasDamas m posPieza@(f, c) = casillasPosibles
   where
-    bandoP = cabeza "casillasVaciasDamas" $ m ! posPieza
+    bandoP = bando $ m ! posPieza
     casillasAlrededor = casillasAlrededorFicha m posPieza
     casillas
       | bandoP == 'B' = filter (\(i, j) -> i < f) casillasAlrededor
@@ -133,7 +132,8 @@ casillasValidasDamas m posPieza@(f, c) = casillasPosibles
       | null casillasAtaque = (casillas, False)
       | otherwise = (casillasAtaque, True)
 
-casillasValidasReinas :: Tablero -> Pos -> ([Pos], Bool)
+-- Casillas validas para las reinas de la versión española
+{- casillasValidasReinas :: Tablero -> Pos -> ([Pos], Bool)
 casillasValidasReinas m p = (diagonales, atacamos)
   where
     (mi, ma) = rangos m
@@ -146,7 +146,20 @@ casillasValidasReinas m p = (diagonales, atacamos)
       | atacamos && not (null resultados) = filter (\(ps, a) -> not (null ps) && a) resultados
       | not (null resultados) = filter (\(ps, _) -> not (null ps)) resultados
       | otherwise = []
-    diagonales = nub $ concatMap (\(ps, _) -> nub ps) posiciones
+    diagonales = nub $ concatMap (\(ps, _) -> nub ps) posiciones -}
+
+-- Casillas validas para las reinas de la versión inglesa
+casillasValidasReinas :: Tablero -> Pos -> ([Pos], Bool)
+casillasValidasReinas m p = casillasPosibles
+  where
+    bandoP = bando $ m ! p
+    casillasAlrededor = casillasAlrededorFicha m p
+    casillas = casillasAlrededor
+    casillasAtaque = calculaCasillasAtaque m bandoP p
+    -- Obligación de la captura
+    casillasPosibles
+      | null casillasAtaque = (casillas, False)
+      | otherwise = (casillasAtaque, True)
 
 calculaCasillasAtaque :: Tablero -> Char -> Pos -> [Pos]
 calculaCasillasAtaque m bando posPieza = filter (compruebaAtaque m bando posPieza) $ casillasSegundoNivel m posPieza
@@ -165,6 +178,7 @@ compruebaAtaque m bandoP posPieza@(f, c) posAtaque@(af, ac) = condiciones
       | not reina && bandoP == 'N' = (f < af) && condicionesBasicas
       | otherwise = condicionesBasicas
 
+-- Función casi perfecta para la versión española de las damas.
 revisaDiagonal :: Tablero -> Pos -> Pos -> String -> ([Pos], Bool) -> ([Pos], Bool)
 revisaDiagonal m p@(f, c) lims@(a, b) pieza (ps, at)
   | not (dentroDelTablero p m) = error mensajeError
@@ -261,6 +275,7 @@ mueveReina t (r : rs, at) movs
 
 atacaOintercambia :: Tablero -> String -> Pos -> Pos -> Movimientos
 atacaOintercambia t nombre posNueva posAntigua
+  | nuevoNombre /= nombre = [(nuevoT, posNueva)]
   | ataca = atacaPieza nuevoT nuevoNombre posNueva reina
   | otherwise = [(nuevoT, posNueva)]
   where
@@ -308,7 +323,10 @@ ataque t og@(x, y) atacada@(i, j) reina = (pos, ataca)
 -- Puntuaciones
 puntuaDamas :: Tablero -> Pos -> IO Double
 puntuaDamas t pos = do
-  -- Necesitamos saber 2 cosas, cuantas piezas hay de cada bando y a cuál pertenecemos
+  {- Necesitamos saber el número de piezas de cada bando, si atacamos o somos atacados,
+  cuánto controlamos el centro, y si tenemos ventajas posicionales en los laterales del tablero. -}
+  {- Información -}
+  -- Información sobre el número de piezas y bando
   let pieza = t ! pos
   let reina = esReina pieza
   let bandoActual = bando pieza
@@ -319,29 +337,60 @@ puntuaDamas t pos = do
   let nRN = fromIntegral $ length $ vivas !! 3
   let esBlanco = bandoActual == 'B'
   let esNegro = bandoActual == 'N'
+  -- Información sobre los ataques
+  let ataque = atacaPieza t pieza pos reina
+  let alrededor = piezasAlrededor t pos
+  let ataques = concatMap (\(nom, p) -> atacaPieza t nom p (esReina nom)) alrededor
+  -- Información del tablero
+  let (base,limite) = rangos t
+  let distanciaAlCentro = div (div limite 2) 2
+  let limiteInf = base + distanciaAlCentro
+  let limiteSup = limite - distanciaAlCentro
+  let casillasCentrales = [limiteInf .. limiteSup]
+  let posicionesCentrales = [(x,y) | x<-casillasCentrales, y<-casillasCentrales, even (x+y)]
+  let posicionesLateralInf = [(x,y) | x<-[base .. limite], y<-[base], even (x+y)]
+  let posicionesLateralSup = [(x,y) | x<-[base .. limite], y<-[limite], even (x+y)]
+  let posicionesLaterales = posicionesLateralInf ++ posicionesLateralSup
+  -- Información sobre la victoria
+  let ganador = bandoGanador t vivas
+  let hasGanado = (esBlanco && ganador == "blancas") || (esNegro && ganador == "negras")
+  let hasPerdido = (esBlanco && ganador == "negras") || (esNegro && ganador == "blancas")
+  {- Pesos otorgados a cada pieza de información -}
+  let valorDama = 9.4
+  let valorReina = 10.5
+  let valorAtaque = 1.0
+  let valorAtacado = 0.5
+  let penalizacionCentral = -0.3
+  let valorAprovechamientoTerreno = 2.9
+  {- Cálculo de las puntuaciones -}
   let puntuacionBlancas
-        | esBlanco = 2.5 * nRB + nDB
-        | esNegro = - (2.5 * nRB + nDB)
+        | esBlanco = valorReina * nRB + valorDama* nDB
+        | esNegro = - (valorReina * nRB + valorDama * nDB)
         | otherwise = 0.0
   let puntuacionNegras
-        | esNegro = 2.5 * nRN + nDN
-        | esBlanco = - (2.5 * nRN + nDN)
+        | esNegro = valorReina * nRN + valorDama * nDN
+        | esBlanco = - (valorReina * nRN + valorDama * nDN)
         | otherwise = 0.0
-  let ataque = atacaPieza t pieza pos reina
-  let ataques = concatMap (\(nom, p) -> atacaPieza t nom p (esReina nom)) (piezasAlrededor t pos)
   let puntuacionAtaca
-        | null ataque = 0.0
-        | otherwise = 2.0 * fromIntegral (length ataque)
-  let puntuacionAtacado
-        | null ataques = 0.0
-        | otherwise = -2.0
-  let puntuacionFinal = puntuacionBlancas + puntuacionNegras + puntuacionAtaca + puntuacionAtacado
-  let ganador = bandoGanador t vivas puntuacionFinal
-  let hasGanado = (esBlanco && ganador == "blancas") || (esNegro && ganador == "negras")
-  let puntuacionGanar
-        | hasGanado = 30.0
+        | length ataque >= 2 = valorAtaque * fromIntegral (length ataque - 1)
         | otherwise = 0.0
-  return $ puntuacionFinal + puntuacionGanar
+  let puntuacionAtacado
+        | length ataques > length alrededor = - (valorAtacado * fromIntegral (length ataques - length alrededor))
+        | otherwise = 0.0
+  let puntuacionCentral
+        | pos `elem` posicionesCentrales = penalizacionCentral
+        | otherwise = 0.0
+  let puntuacionTerreno
+        | pos `elem` posicionesLaterales && length ataque >= 2 = valorAprovechamientoTerreno
+        | otherwise = 0.0
+  -- Cálculo final
+  let puntuacionFinal = puntuacionBlancas + puntuacionNegras + puntuacionAtaca + puntuacionAtacado
+  -- Asignación final de puntuación
+  let puntuacion
+        | hasGanado = 1000.0
+        | hasPerdido = -1000.0
+        | otherwise = puntuacionFinal
+  return puntuacion
 
 piezasAlrededor :: Tablero -> Pos -> [(String, Pos)]
 piezasAlrededor t pos = nomsYps
@@ -472,7 +521,7 @@ cambiaOpcion raton mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, sel
     let nuevoMundo = (mov, juego, dif, prof, traduceMarca opcion, turno, seleccionado, esMaquina, adicional)
     return nuevoMundo
   | nivel == 99 = return mundo
-  | otherwise = error "El nivel de opciones especificado para la función cambiaOpción del juego del gato no existe."
+  | otherwise = error "El nivel de opciones especificado para la función cambiaOpción del juego de las damas no existe."
 
 creaTableroConOpciones :: Mundo -> Mundo
 creaTableroConOpciones mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, seleccionado, esMaquina, adicional)
@@ -495,8 +544,8 @@ calculaNuevoEstado casilla mundo@(mov@(estado, pos), juego, dif, prof, marca, tu
   | otherwise = return mundo
   where
     -- Inicializamos los datos que no tenemos aún y que vamos a necesitar
-    t = round tamMatriz
-    ps = [(i, j) | i <- [1 .. t], j <- [1 .. t]]
+    (base,lim) = rangos estado
+    ps = [(i, j) | i <- [base .. lim], j <- [base .. lim]]
     matrz = toList matrizPosiciones
     relacionadas = zip matrz ps
     posSeñalada = snd $ cabeza "calculaNuevoEstado" $ filter (\(c, p) -> c == casilla) relacionadas
@@ -556,7 +605,7 @@ calculaMundo casilla ((estado, pos), juego, dif, prof, marca, turno, seleccionad
   let sel
         | null casillasAtaque || not ataca = ""
         | otherwise = nuevoNombre
-  let tocaMaquina = null casillasAtaque || not ataca
+  let tocaMaquina = null casillasAtaque || not ataca || nuevoNombre /= seleccionado
   let ad = piezasVivas nuevoEstado
   punt <- puntuaDamas nuevoEstado casilla
   let ad'
@@ -680,7 +729,7 @@ traduceProf dif
   | dif == "Lowest" = 1
   | dif == "Easy" = 2
   | dif == "Medium" = 4
-  | dif == "Hard" = 5
+  | dif == "Hard" = 7
   | otherwise = 1
 
 traduceMarca :: String -> String

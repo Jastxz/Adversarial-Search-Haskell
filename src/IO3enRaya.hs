@@ -167,8 +167,7 @@ pintaJuego3enRaya mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, sele
 hazMovimiento3enRaya :: Point -> Mundo -> IO Mundo
 hazMovimiento3enRaya raton mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, seleccionado, esMaquina, adicional) = do
   -- Preparamos el acceso al archivo temporal
-  caminoPartidas <- directorioPartidas
-  let caminoTemporal = caminoPartidas ++ "/" ++ "temporal.txt"
+  temporal <- caminoTemporal
   -- Casillas donde puede haber pulsado el jugador para interaccionar con el juego
   let posCasillas = toList matrizPosiciones
   -- Comprobamos si ha pulsado cerca de alguna casilla para realizar una acción de juego
@@ -196,7 +195,7 @@ hazMovimiento3enRaya raton mundo@(mov@(estado, pos), juego, dif, prof, marca, tu
             | otherwise = adicional
       return ((nuevoEstado, posNueva), juego, dif, prof, marca, turno, seleccionado, True, ad)
     else do
-      mundoTemporal <- cargarPartida caminoTemporal
+      mundoTemporal <- cargarPartida temporal
       let nuevoMundo | opciones = iniciaOpciones juego
             | cargar = menuCargarPartida
             | volver = mundoTemporal

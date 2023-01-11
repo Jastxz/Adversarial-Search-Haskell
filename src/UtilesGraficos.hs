@@ -35,7 +35,7 @@ import Utiles
 
 -- Lista de los juegos aceptados
 listaDeJuegos :: [String]
-listaDeJuegos = ["Tic-tac-toe", "Cats VS Mouse", "Spanish checkers"]
+listaDeJuegos = ["Tic-tac-toe", "Cats VS Mouse", "Checkers"]
 
 ordenJuegos :: Point
 ordenJuegos = (220.0, -40.0)

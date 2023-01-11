@@ -2,6 +2,7 @@ module GuardarCargar
   ( menuCargarPartida,
     cargarPartida,
     guardarPartida,
+    caminoTemporal,
     temporalPartida,
     pintaMenuCarga,
     escogePartida,
@@ -66,11 +67,15 @@ guardarPartida mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, selecci
       let parte2 = nombreArchivo ++ " y contenido: " ++ contenidoArchivo
       error $ parte1 ++ parte2
 
+caminoTemporal :: IO String
+caminoTemporal = do
+  caminoPartidas <- getTemporaryDirectory
+  let nombreArchivo = caminoPartidas ++ "/" ++ "temporalTFG.txt"
+  return nombreArchivo
+
 temporalPartida :: Mundo -> IO()
 temporalPartida mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, seleccionado, esMaquina, adicional) = do
-  preparaDirectorios
-  caminoPartidas <- directorioPartidas
-  let nombreArchivo = caminoPartidas ++ "/" ++ "temporal.txt"
+  nombreArchivo <- caminoTemporal
   let contenidoArchivo = creaContenido mundo
   existe <- doesFileExist nombreArchivo
   if existe
