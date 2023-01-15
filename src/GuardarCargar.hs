@@ -11,9 +11,13 @@ module GuardarCargar
 where
 
 import Data.List
+import Data.List.Split (splitOn)
 import Data.Matrix
+import Text.Regex (mkRegex, matchRegex)
 import Graphics.Gloss
 import System.Directory
+import System.Directory.Internal.Prelude (when)
+import System.FilePath((</>))
 import Tipos
 import Utiles
 import UtilesGraficos
@@ -48,12 +52,12 @@ cargarPartida caminoArchivo = do
     else return menuInicial
 
 guardarPartida :: Mundo -> IO Mundo
-guardarPartida mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, seleccionado, esMaquina, adicional) = do
+guardarPartida mundo = do
   preparaDirectorios
   caminoPartidas <- directorioPartidas
   archivos <- listDirectory caminoPartidas
-  let numArchivos = length [archivo | archivo <- archivos, juego `isPrefixOf` archivo]
-  let numArchivo = numArchivos + 1
+  let juego = dameJuego mundo
+  let numArchivo = length [archivo | archivo <- archivos, juego `isPrefixOf` archivo] + 1
   let nombreArchivo = caminoPartidas ++ "/" ++ juego ++ "_" ++ show numArchivo ++ ".txt"
   let contenidoArchivo = creaContenido mundo
   writeFile nombreArchivo contenidoArchivo
@@ -70,53 +74,34 @@ guardarPartida mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, selecci
 caminoTemporal :: IO String
 caminoTemporal = do
   caminoPartidas <- getTemporaryDirectory
-  let nombreArchivo = caminoPartidas ++ "/" ++ "temporalTFG.txt"
-  return nombreArchivo
+  return (caminoPartidas </> "temporalTFG.txt")
 
 temporalPartida :: Mundo -> IO()
-temporalPartida mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, seleccionado, esMaquina, adicional) = do
+temporalPartida mundo = do
   nombreArchivo <- caminoTemporal
   let contenidoArchivo = creaContenido mundo
   existe <- doesFileExist nombreArchivo
-  if existe
-    then do
-      removeFile nombreArchivo
-      writeFile nombreArchivo contenidoArchivo
-    else do
-      writeFile nombreArchivo contenidoArchivo
+  when existe (removeFile nombreArchivo)
+  writeFile nombreArchivo contenidoArchivo
 
 creaContenido :: Mundo -> String
 creaContenido mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, seleccionado, esMaquina, adicional) = contenido
   where
     estadoForm = show $ map (cambiaComas . show) (toLists estado)
-    posForm = show pos
-    juegoForm = juego
-    difForm = show dif
-    profForm = show prof
-    marcaForm = marca
-    turnoForm = show turno
     selForm
       | null seleccionado = "nada"
       | otherwise = seleccionado
-    maqForm = show esMaquina
     adForm
       | null adicional = "[]"
       | otherwise = show adicional
-    contenido = unlines [estadoForm, posForm, juegoForm, difForm, profForm, marcaForm, turnoForm, selForm, maqForm, adForm]
+    lista1 = [estadoForm, show pos, juego, show dif, show prof]
+    lista2 = [ marca, show turno, selForm, show esMaquina, adForm]
+    contenido = unlines $ lista1 ++ lista2
 
 sacaContenido :: [String] -> IO Mundo
 sacaContenido contenido = do
-  let estadoForm = eliminaBarrasDobles $ cabeza "sacaContenido" contenido
-  let posForm = contenido !! 1
-  let juego = contenido !! 2
-  let difForm = contenido !! 3
-  let profForm = contenido !! 4
-  let marca = contenido !! 5
-  let turnoForm = contenido !! 6
-  let selForm = contenido !! 7
-  let maqForm = contenido !! 8
-  let adForm = eliminaBarrasDobles $ contenido !! 9
-  let estado = stringToEstado estadoForm
+  let [estadoForm, posForm, juego, difForm, profForm, marca, turnoForm, selForm, maqForm, adForm] = contenido
+  let estado = stringToEstado $ eliminaBarrasDobles estadoForm
   let pos = stringToPos posForm
   let dif = stringToInt difForm
   let prof = stringToInt profForm
@@ -124,10 +109,8 @@ sacaContenido contenido = do
   let seleccionado
         | selForm == "nada" = ""
         | otherwise = selForm
-  let esMaquina
-        | maqForm == "True" = True
-        | otherwise = False
-  let adicional = stringToLista adForm
+  let esMaquina = maqForm == "True"
+  let adicional = stringToLista $ eliminaBarrasDobles adForm
   let mundo = ((estado, pos), juego, dif, prof, marca, turno, seleccionado, esMaquina, adicional)
   return mundo
 
@@ -152,16 +135,13 @@ escogePartida raton mundo = do
   archivos <- listDirectory caminoPartidas
   let origen = fst ordenArchivos
   let modificador = snd ordenArchivos
-  let relacion = zip [origen, origen + modificador ..] [0 .. (length archivos - 1)]
-  let posiciones = [(0.0, y) | (y, _) <- relacion]
-  let arPos = zip archivos posiciones
-  let listaConSeleccionado = filter (\(ar, pos) -> pulsaCerca raton pos) arPos
+  let relacion = zip archivos [(0.0,y) | y<-[origen, origen + modificador ..]]
+  let listaConSeleccionado = filter (\(ar, pos) -> pulsaCerca raton pos) relacion
   if null listaConSeleccionado
     then return mundo
     else do
       let archivo = fst $ cabeza "escogePartida" listaConSeleccionado
-      let caminoArchivo = caminoPartidas ++ "/" ++ archivo
-      cargarPartida caminoArchivo
+      cargarPartida $ caminoPartidas </> archivo
 
 {- +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 Funciones auxiliares
@@ -170,7 +150,7 @@ Funciones auxiliares
 directorioPartidas :: IO String
 directorioPartidas = do
   directorioActual <- getCurrentDirectory
-  return $ directorioActual ++ "/Partidas"
+  return $ directorioActual </> "Partidas"
 
 preparaDirectorios :: IO ()
 preparaDirectorios = do
@@ -178,69 +158,22 @@ preparaDirectorios = do
   createDirectoryIfMissing False caminoPartidas
 
 cambiaComas :: String -> String
-cambiaComas "" = ""
-cambiaComas (x:xs)
-  | x == ',' = ';' : cambiaComas xs
-  | otherwise = x : cambiaComas xs
+cambiaComas = map (\c -> if c == ',' then ';' else c)
 
 eliminaBarrasDobles :: String -> String
-eliminaBarrasDobles "" = ""
-eliminaBarrasDobles (x:xs)
-  | x == '\\' = ' ' : eliminaBarrasDobles xs
-  | x == '\"' = eliminaBarrasDobles xs
-  | otherwise = x : eliminaBarrasDobles xs
+eliminaBarrasDobles = map (\c -> if c == '\\' then ' ' else c) . filter (/='\"')
 
 stringToEstado :: String -> Tablero
 stringToEstado = fromLists . stringToLista
 
 stringToPos :: String -> Pos
-stringToPos p
-  | cumplePatron = (p1, p2)
-  | otherwise = error msj
-  where
-    cab = cabeza "stringToPos" p
-    entero1 = esInt $ takeWhile (/= ',') $ tail p
-    parte2 = dropWhile (/= ',') p
-    medio = cabeza "stringToPos" parte2
-    entero2 = esInt $ takeWhile (/= ')') $ tail parte2
-    final = last p
-    cumplePatron = cab == '(' && entero1 && medio == ',' && entero2 && final == ')'
-    msj = "En la funcion stringToPos esta entrando una posicion invalida. Concretamente: " ++ p
-    p1
-      | entero1 = stringToInt $ takeWhile (/= ',') $ tail p
-      | otherwise = error msj
-    p2
-      | entero2 = stringToInt $ takeWhile (/= ')') $ tail parte2
-      | otherwise = error msj
+stringToPos p = case matchRegex (mkRegex "\\(([0-9]+),([0-9]+)\\)") p of
+    Just [p1, p2] -> (read p1, read p2)
+    _             -> error $ "Entrada inválida en stringToPos: " ++ p
 
 stringToLista :: String -> [[String]]
-stringToLista "" = []
-stringToLista "[[\"nada\"]]" = [["nada"]]
-stringToLista (x : xs)
-  | x == '[' && cab == '[' = stringToLista' sublista : stringToLista resto
-  | x == ',' = stringToLista' sublista : stringToLista resto
-  | x == ']' = []
-  | otherwise = []
-  where
-    cab = cabeza "stringToLista" xs
-    sublista = takeWhile (/= ',') xs
-    resto = dropWhile (/= ',') xs
-
-stringToLista' :: String -> [String]
-stringToLista' "" = []
-stringToLista' (x : xs)
-  | x == '[' = stringToLista' xs
-  | x == ']' = []
-  | x == ';' = stringToLista' xs
-  | otherwise = palabra : stringToLista' resto
-  where
-    palabra = depuraPalabra $ x : takeWhile (/= ';') xs
-    resto = dropWhile (/= ';') xs
+stringToLista = map (map depuraPalabra . splitOn ";") . filter (not . null) . splitOn "," . tail . init
 
 depuraPalabra :: String -> String
-depuraPalabra "" = ""
-depuraPalabra (x:xs)
-  | x `elem` alfabeto = x : depuraPalabra xs
-  | otherwise = depuraPalabra xs
-    where
-      alfabeto = ['a'..'z'] ++ ['A'..'Z'] ++ ['1'..'9']
+depuraPalabra = filter (`elem` alfabeto)
+    where alfabeto = ['a'..'z'] ++ ['A'..'Z'] ++ ['1'..'9']

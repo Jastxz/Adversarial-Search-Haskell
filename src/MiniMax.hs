@@ -3,8 +3,11 @@ module MiniMax
   )
 where
 
+import Control.Concurrent
+import Control.Concurrent.Async
 import Data.List
 import Interconexion
+import System.Directory.Internal.Prelude (on)
 import Tipos
 import Utiles
 
@@ -31,31 +34,18 @@ iteraNegamax (estado, pos) profundidad marcaMaquina juego referencia quienJuega 
     then do
       return (estado, puntuacion)
     else do
-      let sig = siguiente quienJuega
       let sigMarca = marcaDeLaMaquina marcaMaquina juego
-      iteraciones <- realizaIteraciones movsPosibles (profundidad - 1) sigMarca juego referencia sig
+      iteraciones <- realizaIteraciones movsPosibles (profundidad - 1) sigMarca juego referencia (siguiente quienJuega)
       al <- now
-      let mejor = aleatorio al $ minimoSegundo iteraciones
-      return mejor
+      return $ aleatorio al iteraciones
 
 realizaIteraciones :: Movimientos -> Int -> String -> String -> Double -> Int -> IO TablerosPuntuados
 realizaIteraciones [] _ _ _ _ _ = return []
-realizaIteraciones (m : ms) prof marcaMaquina juego referencia quienJuega = do
-  tableroPuntuado <- iteraNegamax m prof marcaMaquina juego referencia quienJuega
-  let (iteracion, v) = tableroPuntuado
-  let valor = - v
-  let tabFinal = (fst m, valor)
-  let mejorReferencia = max referencia valor
-  iteraciones <- realizaIteraciones ms prof marcaMaquina juego mejorReferencia quienJuega
-  al <- now
-  let tabIteraciones
-        | null iteraciones = tabFinal
-        | otherwise = aleatorio al iteraciones
-  -- Minimizamos la puntuación del humano
-  let mejorTablero
-        | tabFinal == tabIteraciones = [tabFinal]
-        | otherwise = tabFinal : iteraciones
-  return mejorTablero
+realizaIteraciones ms prof marcaMaquina juego referencia quienJuega = do
+  tablerosPuntuados <- mapConcurrently (\m -> iteraNegamax m prof marcaMaquina juego referencia quienJuega) ms
+  let tablerosConValor = zipWith (curry (\((e, _), (_, puntuacion)) -> (e, - puntuacion))) ms tablerosPuntuados
+  let minimo = snd $ minimumBy (compare `on` snd) tablerosConValor
+  return $ filter (\(_, v) -> v == minimo) tablerosConValor
 
 {- +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 Negamax con poda
@@ -70,44 +60,39 @@ negamaxConPoda mov@(estado, pos) profundidad marcaMaquina juego alfa beta quienJ
     then do
       return (estado, puntuacion)
     else do
-      let sig = siguiente quienJuega
       let sigMarca = marcaDeLaMaquina marcaMaquina juego
       prob <- time
-      evaluadosParcialmente <- evaluaMovimientosParcialmente movsPosibles profundidad juego
+      evalParc <- evaluaMovsParc movsPosibles profundidad juego
       aleatorios <- escogeAleatorios prob movsPosibles
       let movimientosIterar
-            | not (null evaluadosParcialmente) && profundidad == 1 = evaluadosParcialmente
+            | not (null evalParc) && profundidad == 1 = evalParc
             | not (null aleatorios) = aleatorios
             | otherwise = movsPosibles
-      iteraciones <- iteraPoda movimientosIterar (profundidad - 1) sigMarca juego alfa beta sig
+      iteraciones <- withAsync (iteraPoda movimientosIterar (profundidad - 1) sigMarca juego alfa beta (siguiente quienJuega)) (
+        \iteracionesAsync -> do
+        wait iteracionesAsync)
       al <- now
-      let umbral = umbralMovimientoMagnificoSegunJuego juego
-      if even profundidad && puntuacion >= umbral
+      if puntuacion >= umbralMovimientoMagnificoSegunJuego juego
         then return (fst mov, puntuacion)
         else do
-          let mejor = aleatorio al $ minimoSegundo iteraciones
-          return mejor
+          return $ aleatorio al iteraciones
 
 iteraPoda :: Movimientos -> Int -> String -> String -> Double -> Double -> Int -> IO TablerosPuntuados
 iteraPoda [] _ _ _ _ _ _ = return []
 iteraPoda (m : ms) prof marcaMaquina juego alfa beta quienJuega = do
-  tableroPuntuado <- negamaxConPoda m prof marcaMaquina juego (- beta) (- alfa) quienJuega
-  let (iteracion, v) = tableroPuntuado
-  let valor = - v
-  let tabFinal = (fst m, valor)
+  (iteracion, v) <- negamaxConPoda m prof marcaMaquina juego (- beta) (- alfa) quienJuega
+  let tabFinal = (fst m, - v)
   -- Minimizamos la puntuación del humano
-  let nuevoBeta = min beta valor
+  let nuevoBeta = min beta (- v)
   if alfa > nuevoBeta
     then do
       return [tabFinal]
     else do
       iteraciones <- iteraPoda ms prof marcaMaquina juego alfa nuevoBeta quienJuega
-      al <- now
-      let tabIteraciones
-            | null iteraciones = tabFinal
-            | otherwise = aleatorio al iteraciones
       let mejorTablero
-            | tabFinal == tabIteraciones = [tabFinal]
+            | null iteraciones = [tabFinal]
+            | (-v) < (snd . cabeza "iteraPoda") iteraciones = [tabFinal]
+            | (-v) > (snd . cabeza "iteraPoda") iteraciones = iteraciones
             | otherwise = tabFinal : iteraciones
       return mejorTablero
 
@@ -115,7 +100,7 @@ iteraPoda (m : ms) prof marcaMaquina juego alfa beta quienJuega = do
 Negamax completo
 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ -}
 negamaxCompleto :: Movimiento -> Int -> String -> String -> Double -> Double -> Int -> IO TableroPuntuado
-negamaxCompleto (estado, pos) profundidad marcaMaquina juego alfa beta quienJuega = do
+negamaxCompleto mov@(estado, pos) profundidad marcaMaquina juego alfa beta quienJuega = do
   let esFinal = esEstadoFinal estado juego
   puntuacion <- puntuaEstado estado pos juego
   --   Obtenemos los movimientos de la máquina o humano del nivel actual
@@ -136,41 +121,41 @@ negamaxCompleto (estado, pos) profundidad marcaMaquina juego alfa beta quienJueg
           let sig = siguiente quienJuega
           let sigMarca = marcaDeLaMaquina marcaMaquina juego
           prob <- time
-          evaluadosParcialmente <- evaluaMovimientosParcialmente movsPosibles profundidad juego
+          evalParc <- evaluaMovsParc movsPosibles profundidad juego
           aleatorios <- escogeAleatorios prob movsPosibles
           let movimientosIterar
-                | not (null evaluadosParcialmente) && profundidad == 1 = evaluadosParcialmente
+                | not (null evalParc) && profundidad == 1 = evalParc
                 | not (null aleatorios) = aleatorios
                 | otherwise = movsPosibles
-          iteraciones <- iteraCompleto movimientosIterar (profundidad - 1) sigMarca juego alfa beta sig
+          iteraciones <- withAsync (
+            iteraCompleto movimientosIterar (profundidad - 1) sigMarca juego alfa beta (siguiente quienJuega)
+            ) (
+            \iteracionesAsync -> do
+            wait iteracionesAsync)
           al <- now
-          let mejor = aleatorio al $ minimoSegundo iteraciones
-          if profundidad == 1000
-            then do
-              print mejor
-              return mejor
-            else return mejor
+          let umbral = umbralMovimientoMagnificoSegunJuego juego
+          if even profundidad && puntuacion >= umbral
+            then return (fst mov, puntuacion)
+            else do
+              let minimo = minimum $ map snd iteraciones
+              return $ aleatorio al $ filter (\(_, p) -> p <= minimo) iteraciones
 
 iteraCompleto :: Movimientos -> Int -> String -> String -> Double -> Double -> Int -> IO TablerosPuntuados
 iteraCompleto [] _ _ _ _ _ _ = return []
 iteraCompleto (m : ms) prof marcaMaquina juego alfa beta quienJuega = do
-  tableroPuntuado <- negamaxCompleto m prof marcaMaquina juego (- beta) (- alfa) quienJuega
-  let (iteracion, v) = tableroPuntuado
-  let valor = - v
-  let tabFinal = (fst m, valor)
+  (iteracion, v) <- negamaxCompleto m prof marcaMaquina juego (- beta) (- alfa) quienJuega
+  let tabFinal = (fst m, - v)
   -- Minimizamos la puntuación del humano
-  let nuevoBeta = min beta valor
+  let nuevoBeta = min beta (- v)
   if alfa > nuevoBeta
     then do
       return [tabFinal]
     else do
       iteraciones <- iteraCompleto ms prof marcaMaquina juego alfa nuevoBeta quienJuega
-      al <- now
-      let tabIteraciones
-            | null iteraciones = tabFinal
-            | otherwise = aleatorio al iteraciones
       let mejorTablero
-            | tabFinal == tabIteraciones = [tabFinal]
+            | null iteraciones = [tabFinal]
+            | (-v) < (snd . cabeza "iteraPoda") iteraciones = [tabFinal]
+            | (-v) > (snd . cabeza "iteraPoda") iteraciones = iteraciones
             | otherwise = tabFinal : iteraciones
       return mejorTablero
 
@@ -178,15 +163,15 @@ iteraCompleto (m : ms) prof marcaMaquina juego alfa beta quienJuega = do
 Auxiliares
 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ -}
 
-evaluaMovimientosParcialmente :: Movimientos -> Int -> String -> IO Movimientos
-evaluaMovimientosParcialmente [] _ _ = return []
-evaluaMovimientosParcialmente (m : ms) prof juego = do
+evaluaMovsParc :: Movimientos -> Int -> String -> IO Movimientos
+evaluaMovsParc [] _ _ = return []
+evaluaMovsParc (m : ms) prof juego = do
   let (estado, pos) = m
   alfa <- puntuaEstado estado pos juego
   let umbral = umbralSegunJuego juego
   let margen = margenUtilidadSegunJuego juego
   let alfaConMargen = alfa + margen
-  evaluados <- evaluaMovimientosParcialmente ms prof juego
+  evaluados <- evaluaMovsParc ms prof juego
   if (alfaConMargen <= umbral) && (prof == 1) && not (esEstadoFinal estado juego)
     then return evaluados
     else return $ m : evaluados
@@ -200,15 +185,3 @@ hayReposo (m : ms) juego = do
   if valor >= umbral
     then return False
     else hayReposo ms juego
-
-minimoSegundo :: TablerosPuntuados -> TablerosPuntuados
-minimoSegundo [] = []
-minimoSegundo (x:xs)
-    | null xs = [x]
-    | num < ma = [x]
-    | num == ma = x : resto
-    | otherwise = resto
-    where
-      (m,num) = x
-      resto = minimoSegundo xs
-      (a,ma) = cabeza "minimoSegundo" resto

@@ -35,16 +35,16 @@ module Utiles
     nuevaLinea,
     now,
     time,
-    leeDigito,
-    sacaPuntuacionesDeIO,
   )
 where
 
+import Data.Maybe
 import Data.Char
 import qualified Data.Functor
-import Data.List (nub)
+import Data.List (nub, elemIndex)
 import Data.Matrix
 import Data.Time.Clock
+import System.Random
 import Tipos
 
 {- +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -55,21 +55,15 @@ rangos :: Matrix a -> (Int, Int)
 rangos m = (1, nrows m)
 
 numeroElementosMatriz :: Matrix a -> Int
-numeroElementosMatriz m = length $ toList m
+numeroElementosMatriz m = nrows m * ncols m
 
 columnasMatriz :: Matrix a -> [[a]]
 columnasMatriz m = toLists $ transpose m
 
 diagonalesMatriz :: Matrix a -> [[a]]
-diagonalesMatriz m = diagonalPMatriz n m : [diagonalSMatriz n m]
+diagonalesMatriz m = [map (\x -> m ! (x,x)) [1..n], map (\x -> m ! (x, n - x + 1)) [1..n]]
   where
     n = nrows m
-
-diagonalPMatriz :: Int -> Matrix a -> [a]
-diagonalPMatriz n m = [m ! (x, x) | x <- [1 .. n]]
-
-diagonalSMatriz :: Int -> Matrix a -> [a]
-diagonalSMatriz n m = [m ! (x, n - x + 1) | x <- [1 .. n]]
 
 tableroVacio :: String -> Movimiento
 tableroVacio nombre = (tab, pos)
@@ -88,18 +82,14 @@ dentroDelTablero (i, j) m = (i >= rmin && i <= rmax) && (j >= rmin && j <= rmax)
     (rmin, rmax) = rangos m
 
 casillaVacia :: Tablero -> Pos -> Bool
-casillaVacia m p
-  | espacio || nula = True
-  | otherwise = False
+casillaVacia m p = elemento == " " || elemento == ""
   where
-    espacio = (m ! p) == " "
-    nula = (m ! p) == ""
+    elemento = m ! p
 
 casillasVacias :: Tablero -> [Pos]
-casillasVacias m = filter (casillaVacia m) casillas
+casillasVacias m = filter (casillaVacia m) [(i, j) | i <- [min .. max], j <- [min .. max]]
   where
     (min, max) = rangos m
-    casillas = [(i, j) | i <- [min .. max], j <- [min .. max]]
 
 casillasAlrededorFicha :: Tablero -> Pos -> [Pos]
 casillasAlrededorFicha m (f, c) = [(i, j) | i <- filas, j <- columnas, auxiliarCasillas m (i, j) && (i, j) `notElem` exluidas]
@@ -185,57 +175,37 @@ stringToFloat s = entera + fraccionaria
 
 listasDePares :: [a] -> [[a]]
 listasDePares [] = []
-listasDePares lista = par : listasDePares resto
-  where
-    par = take 2 lista
-    resto = drop 2 lista
+listasDePares (x:y:ls) = [x,y] : listasDePares ls
 
 distanciaEuclidea :: Float -> Float -> Float
 distanciaEuclidea a b = sqrt $ (a - b) ** 2
 
 intercambia :: [a] -> a -> Int -> [a]
-intercambia (x : xs) a p
-  | p == 0 = a : xs
-  | null xs = [a]
-  | otherwise = x : intercambia xs a (p -1)
+intercambia xs a p = take (p-1) xs ++ [a] ++ drop (p+1) xs
 
 introduce :: [a] -> a -> Int -> [a]
-introduce (x : xs) a p
-  | p == 0 = x : a : xs
-  | null xs = x : [a]
-  | otherwise = x : introduce xs a (p -1)
+introduce xs a p = take p xs ++ [a] ++ drop (p+1) xs
 
 elimina :: [a] -> Int -> [a]
-elimina (x : xs) p
-  | p == 0 = xs
-  | null xs = [x]
-  | otherwise = x : elimina xs (p -1)
+elimina xs p = take (p-1) xs ++ drop (p+1) xs
 
 eliminaElemento :: Eq a => [a] -> a -> [a]
-eliminaElemento (x : xs) a
-  | x == a = xs
-  | null xs = [x]
-  | otherwise = x : eliminaElemento xs a
+eliminaElemento xs a = filter (/=a) xs
 
 aleatorio :: Int -> [a] -> a
 aleatorio al xs
   | null xs = error "Lista vacia en funcion aleatorio"
   | otherwise = x
   where
-    limite = length xs
-    a = mod al limite
-    x = xs !! a
+    x = xs !! mod al (length xs)
 
 escogeAleatorios :: Double -> [a] -> IO [a]
 escogeAleatorios _ [] = return []
-escogeAleatorios al (x : xs) = do
-  let prob = normaliza al
-  tiempo <- time
-  let contra = normaliza tiempo
-  resto <- escogeAleatorios al xs
-  if contra > prob
-    then return $ x : resto
-    else return resto
+escogeAleatorios al xs = do
+  gen <- newStdGen
+  let randoms = take (length xs) (randomRs (0,1) gen)
+  let seleccion = map snd $ filter (\(r,_) -> r <= al) (zip randoms xs)
+  return seleccion
 
 normaliza :: Double -> Double
 normaliza d = d - fromIntegral (floor d)
@@ -248,28 +218,10 @@ nuevaLinea :: IO ()
 nuevaLinea = do putStrLn ""
 
 now :: IO Int
-now = getCurrentTime Data.Functor.<&> (floor . fromRational . toRational . utctDayTime)
+now = floor . utctDayTime <$> getCurrentTime
 
 time :: IO Double
-time = getCurrentTime Data.Functor.<&> (fromRational . toRational . utctDayTime)
-
-leeDigito :: String -> IO Int
-leeDigito c = do
-  putStrLn c
-  digito <- getLine
-  if esInt digito
-    then do
-      return $ stringToInt digito
-    else do
-      return 0
-
-sacaPuntuacionesDeIO :: [IO Double] -> IO [Double]
-sacaPuntuacionesDeIO [] = return []
-sacaPuntuacionesDeIO (p : ps) = do
-  np <- p
-  nps <- sacaPuntuacionesDeIO ps
-  let puntuaciones = np : nps
-  return puntuaciones
+time = fromRational . toRational . utctDayTime <$> getCurrentTime
 
 {- +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 Funciones auxiliares
