@@ -267,8 +267,11 @@ casillasBlancas = uneCasillas cuadradosImpares cuadradosPares
     cuadradosPares = [(j, i) | i <- reverse anchurasImpares, j <- anchurasPares]
 
 cambiaOpcion :: Point -> Mundo -> Int -> String -> IO Mundo
-cambiaOpcion (x, y) mundo@(mov, juego, dif, prof, marca, turno, seleccionado, esMaquina, adicional) nivel opcion = case nivel of
-  0 -> return $ ponDificultad mundo $ traduceDif opcion
+cambiaOpcion (x, y) mundo nivel opcion = case nivel of
+  0 -> do
+    let dif = traduceDif opcion
+    let prof = traduceProf opcion
+    return $ ponDificultad (ponProfundidad mundo prof) dif
   1 -> return $ ponMarca mundo $ traduceMarca opcion
   99 -> cambiaMiniTablero (x, y - alturaTablero) mundo
   _ -> error "El nivel de opciones especificado para la función cambiaOpción del juego del gato no existe."
@@ -326,7 +329,11 @@ calculaNuevoEstado casilla mundo
     el = estado ! posSeñalada
 
 calculaMundo :: Pos -> Mundo -> IO Mundo
-calculaMundo casilla mundo@((estado, pos), juego, dif, prof, marca, turno, seleccionado, esMaquina, adicional) = do
+calculaMundo casilla mundo = do
+  let estado = (fst . dameMovimiento) mundo
+  let marca = dameMarca mundo
+  let seleccionado = dameSeleccionado mundo
+  let adicional = dameAdicional mundo
   let posAntigua = buscaPieza estado seleccionado
   let nuevoEstado = intercambiaPieza estado seleccionado casilla posAntigua
   let posRaton
@@ -339,7 +346,7 @@ calculaMundo casilla mundo@((estado, pos), juego, dif, prof, marca, turno, selec
         | ((marca == "R") && haEscapado) || ((marca == "G") && estaEncerrado) = [["humano"]]
         | ((marca == "G") && haEscapado) || ((marca == "R") && estaEncerrado) = [["maquina"]]
         | otherwise = adicional
-  return ((nuevoEstado, casilla), juego, dif, prof, marca, turno, "", True, ad)
+  return $ ponMovimiento (ponSeleccionado (ponEsMaquina (ponAdicional mundo ad) True) "") (nuevoEstado, casilla)
 
 pintaMarca :: Pos -> Tablero -> Picture
 pintaMarca pos estado

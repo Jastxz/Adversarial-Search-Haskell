@@ -69,10 +69,10 @@ movs3enRaya t marcaMaquina = map (\pos -> (setElem marcaMaquina pos t, pos)) (ca
 -- Puntuaciones
 puntua3enRaya :: Tablero -> Pos -> IO Double
 puntua3enRaya t pos = do
-  let hay2 = if hay2EnRaya t pos then 5.0 else 0.0
-  let corta3 = if corta3EnRaya t pos then 7.5 else hay2
-  let hay3 = if hay3EnRaya t then 10.0 else corta3
-  return hay3
+  hay2 <- hay2EnRaya t pos
+  corta3 <- corta3EnRaya t pos
+  let hay3 = hay3EnRaya t
+  return $ if hay3 then 10.0 else if corta3 then 7.5 else if hay2 then 5.0 else 0.0
 
 {- +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 Funciones para los gráficos
@@ -157,7 +157,7 @@ alturasCasillas = [a, a - diferencia .. (- a)]
 
 cambiaOpcion :: Mundo -> Int -> String -> Mundo
 cambiaOpcion mundo nivel opcion = case nivel of
-  0 -> ponDificultad mundo $ traduceDif opcion
+  0 -> ponDificultad (ponProfundidad mundo (traduceProf opcion)) $ traduceDif opcion
   1 -> ponTurno mundo $ traduceTurnos opcion
   2 -> ponMarca mundo opcion
   99 -> mundo
@@ -229,25 +229,33 @@ Funciones auxiliares
 marcaMaquina3enRaya :: String -> String
 marcaMaquina3enRaya marca = if marca == "X" then "O" else "X"
 
-corta3EnRaya :: Tablero -> Pos -> Bool
-corta3EnRaya t pos = any ((== True) . any (\f -> (count marcaHum f == 2) && (count marcaMaq f == 1))) [fs, cs, ds]
-  where
-    fs = toLists t
-    cs = columnasMatriz t
-    ds = diagonalesMatriz t
-    marcaMaq = t ! pos
-    marcaHum = marcaMaquina3enRaya marcaMaq
-    count x = length . filter (== x)
+corta3EnRaya :: Tablero -> Pos -> IO Bool
+corta3EnRaya t pos = do
+  let fila = toLists t !! (fst pos - 1)
+  let columna = columnasMatriz t !! (snd pos - 1)
+  let ds
+        | pos == (1,1) || pos == (3,3) = [cabeza "corta3enRaya" (diagonalesMatriz t)]
+        | pos == (1,3) || pos == (3,1) = [last (diagonalesMatriz t)]
+        | pos == (2,2) = diagonalesMatriz t
+        | otherwise = []
+  let marcaMaq = t ! pos
+  let marcaHum = marcaMaquina3enRaya marcaMaq
+  let cuenta x = length . filter (==x)
+  return $ any (any (\l -> (cuenta marcaHum l == 2) && marcaMaq `elem` l)) [[fila],[columna],ds]
 
-hay2EnRaya :: Tablero -> Pos -> Bool
-hay2EnRaya t pos = any ((== True) . any (\f -> (count marcaMaq f == 2) && (count marcaHum f == 0))) [fs, cs, ds]
-  where
-    fs = toLists t
-    cs = columnasMatriz t
-    ds = diagonalesMatriz t
-    marcaMaq = t ! pos
-    marcaHum = marcaMaquina3enRaya marcaMaq
-    count x = length . filter (== x)
+hay2EnRaya :: Tablero -> Pos -> IO Bool
+hay2EnRaya t pos = do
+  let fila = toLists t !! (fst pos - 1)
+  let columna = columnasMatriz t !! (snd pos - 1)
+  let ds
+        | pos == (1,1) || pos == (3,3) = [cabeza "corta3enRaya" (diagonalesMatriz t)]
+        | pos == (1,3) || pos == (3,1) = [last (diagonalesMatriz t)]
+        | pos == (2,2) = diagonalesMatriz t
+        | otherwise = []
+  let marcaMaq = t ! pos
+  let marcaHum = marcaMaquina3enRaya marcaMaq
+  let cuenta x = length . filter (==x)
+  return $ any (any (\l -> (cuenta marcaMaq l == 2) && (cuenta marcaHum l == 0))) [[fila],[columna],ds]
 
 traduceDif :: String -> Int
 traduceDif dif = case dif of

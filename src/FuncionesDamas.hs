@@ -137,22 +137,6 @@ casillasValidasDamas m posPieza@(f, _) = casillasPosibles
       | null casillasAtaque = (casillas, False)
       | otherwise = (casillasAtaque, True)
 
--- Casillas validas para las reinas de la versión española
-{- casillasValidasReinas :: Tablero -> Pos -> ([Pos], Bool)
-casillasValidasReinas m p = (diagonales, atacamos)
-  where
-    (mi, ma) = rangos m
-    pieza = m ! p
-    resultados
-      | pieza == "" || pieza == " " = []
-      | otherwise = [revisaDiagonal m p (a, b) pieza ([], False) | a <- [mi, ma], b <- [mi, ma]]
-    atacamos = any snd resultados
-    posiciones
-      | atacamos && not (null resultados) = filter (\(ps, a) -> not (null ps) && a) resultados
-      | not (null resultados) = filter (\(ps, _) -> not (null ps)) resultados
-      | otherwise = []
-    diagonales = nub $ concatMap (\(ps, _) -> nub ps) posiciones -}
-
 -- Casillas validas para las reinas de la versión inglesa
 casillasValidasReinas :: Tablero -> Pos -> ([Pos], Bool)
 casillasValidasReinas m p = casillasPosibles
@@ -473,7 +457,10 @@ casillasBlancas = uneCasillas cuadradosImpares cuadradosPares
 
 cambiaOpcion :: Point -> Mundo -> Int -> String -> IO Mundo
 cambiaOpcion raton mundo nivel opcion
-  | nivel == 0 = return $ ponDificultad mundo $ traduceDif opcion
+  | nivel == 0 = do
+    let dif = traduceDif opcion
+    let prof = traduceProf opcion
+    return $ ponDificultad (ponProfundidad mundo prof) dif
   | nivel == 1 = return $ ponMarca mundo $ traduceMarca opcion
   | nivel == 99 = return mundo
   | otherwise = error "El nivel de opciones especificado para la función cambiaOpción del juego de las damas no existe."
@@ -675,9 +662,9 @@ traduceDif dif = case dif of
 traduceProf :: String -> Int
 traduceProf dif = case dif of
   "Lowest" -> 2
-  "Easy" -> 4
-  "Medium" -> 6
-  "Hard" -> 8
+  "Easy" -> 3
+  "Medium" -> 4
+  "Hard" -> 5
   _ -> 1
 
 traduceMarca :: String -> String

@@ -5,7 +5,6 @@ module Interconexion
     siguiente,
     marcaDeLaMaquina,
     umbralSegunJuego,
-    margenUtilidadSegunJuego,
     umbralMovimientoMagnificoSegunJuego,
   )
 where
@@ -16,8 +15,8 @@ import FuncionesGato
 import Tipos
 import Utiles
 
-movimientosPosibles :: Tablero -> Int -> String -> String -> Movimientos
-movimientosPosibles estado quienJuega marcaMaquina juego = case juego of
+movimientosPosibles :: Tablero -> String -> String -> Movimientos
+movimientosPosibles estado marcaMaquina juego = case juego of
   "3enRaya" -> movs3enRaya estado marcaMaquina
   "gato" -> movsGato estado marcaMaquina
   "damas" -> movsDamas estado marcaMaquina
@@ -50,15 +49,8 @@ marcaDeLaMaquina marca juego = case juego of
 umbralSegunJuego :: String -> Double
 umbralSegunJuego juego = case juego of
   "3enRaya" -> 5.0
-  "gato" -> 0.0
-  "damas" -> 5.0
-  _ -> 0.0
-
-margenUtilidadSegunJuego :: String -> Double
-margenUtilidadSegunJuego juego = case juego of
-  "3enRaya" -> 0.0
-  "gato" -> 1.0
-  "damas" -> 1.0
+  "gato" -> 2.0
+  "damas" -> 37.6
   _ -> 0.0
 
 umbralMovimientoMagnificoSegunJuego :: String -> Double

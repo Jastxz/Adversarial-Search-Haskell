@@ -81,11 +81,8 @@ pintaOpcionesDamas mundo = do
 
 manejaOpcionesDamas :: Point -> Mundo -> IO Mundo
 manejaOpcionesDamas raton mundo = do
-  -- Valores de separación entre las casillas de las opciones
-  let iC = fst distribucionOpciones
-  let eC = snd distribucionOpciones
   -- Buscando la casilla en cuestión
-  let (indice, columna) = opcionPulsada raton alturasEstaticas infoEstatica iC eC
+  let (indice, columna) = uncurry (opcionPulsada raton alturasEstaticas infoEstatica) distribucionOpciones
   let menu = pulsaCerca raton posMenu
   let cargar = pulsaCerca raton posCargar
   let comenzar = pulsaCerca raton posBoton
