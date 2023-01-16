@@ -133,6 +133,8 @@ hazMovimiento3enRaya :: Point -> Mundo -> IO Mundo
 hazMovimiento3enRaya raton mundo = do
   -- Preparamos el acceso al archivo temporal
   temporal <- caminoTemporal
+  -- Comprobamos si hay partidas guardadas
+  hayPartidas <- hayPartidasGuardadas
   -- Casillas donde puede haber pulsado el jugador para interaccionar con el juego
   let posCasillas = toList matrizPosiciones
   -- Comprobamos si ha pulsado cerca de alguna casilla para realizar una acción de juego
@@ -140,7 +142,7 @@ hazMovimiento3enRaya raton mundo = do
   let pulsacion = devuelvePulsacion raton posCasillas posBotones
   let posiblesAcciones = map (matrizPosiciones !) $ (casillasVacias . fst . dameMovimiento) mundo
   -- Finalmente realizamos la acción en caso de que la hubiera y fuera realizable ó simplemente no devolvemos nada nuevo
-  accionRealizada mundo pulsacion temporal posiblesAcciones
+  accionRealizada mundo pulsacion temporal posiblesAcciones hayPartidas
 
 {- Función para el turno de la máquina -}
 mueveMaquina3enRaya :: Mundo -> IO Mundo

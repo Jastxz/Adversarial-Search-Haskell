@@ -7,6 +7,7 @@ module GuardarCargar
     pintaMenuCarga,
     escogePartida,
     directorioPartidas,
+    hayPartidasGuardadas,
   )
 where
 
@@ -156,6 +157,12 @@ preparaDirectorios :: IO ()
 preparaDirectorios = do
   caminoPartidas <- directorioPartidas
   createDirectoryIfMissing False caminoPartidas
+
+hayPartidasGuardadas :: IO Bool
+hayPartidasGuardadas = do
+  caminoPartidas <- directorioPartidas
+  archivos <- listDirectory caminoPartidas
+  return $ not $ null archivos
 
 cambiaComas :: String -> String
 cambiaComas = map (\c -> if c == ',' then ';' else c)
