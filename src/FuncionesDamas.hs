@@ -33,6 +33,7 @@ module FuncionesDamas
     turnoApos,
     cambiaOpcion,
     creaTableroConOpciones,
+    accionRealizada,
     calculaNuevoEstado,
     casillasDisponiblesParaElJugador,
     posMenu,
@@ -50,22 +51,48 @@ import Data.List (nub, reverse)
 import Data.Matrix
 import Graphics.Gloss
 import Graphics.Gloss.Interface.IO.Game
+import GuardarCargar
 import Tipos
 import Utiles
 import UtilesGraficos
 
--- Inicialización
+-- Constantes
+posicionesInicialesBlancas :: [Pos]
 posicionesInicialesBlancas = [(6, 2), (6, 4), (6, 6), (6, 8), (7, 1), (7, 3), (7, 5), (7, 7), (8, 2), (8, 4), (8, 6), (8, 8)]
 
+posicionesInicialesNegras :: [Pos]
 posicionesInicialesNegras = [(1, 1), (1, 3), (1, 5), (1, 7), (2, 2), (2, 4), (2, 6), (2, 8), (3, 1), (3, 3), (3, 5), (3, 7)]
 
+nombresBlancas :: [String]
 nombresBlancas = ["B62", "B64", "B66", "B68", "B71", "B73", "B75", "B77", "B82", "B84", "B86", "B88"]
 
+nombresNegras :: [String]
 nombresNegras = ["N11", "N13", "N15", "N17", "N22", "N24", "N26", "N28", "N31", "N33", "N35", "N37"]
 
+nombresReinasBlancas :: [String]
 nombresReinasBlancas = map ('R' :) nombresBlancas
 
+nombresReinasNegras :: [String]
 nombresReinasNegras = map ('R' :) nombresNegras
+
+{- Pesos otorgados a cada pieza de información -}
+valorDama :: Double
+valorDama = 9.4
+
+valorReina :: Double
+valorReina = 10.5
+
+valorAtaque :: Double
+valorAtaque = 1.0
+
+valorAtacado :: Double
+valorAtacado = 0.5
+
+penalizacionCentral :: Double
+penalizacionCentral = -0.3
+
+valorAprovechamientoTerreno :: Double
+valorAprovechamientoTerreno = 2.9
 
 inicial :: Pos -> Movimiento
 inicial pos = (t, pos)
@@ -73,115 +100,85 @@ inicial pos = (t, pos)
     tam = round tamMatriz
     t = matrix tam tam $ \(i, j) -> añadePiezas (i, j)
 
-añadePiezas :: Pos -> String
-añadePiezas actual@(x, y)
-  | actual `elem` posicionesInicialesNegras = "N" ++ show x ++ show y
-  | actual `elem` posicionesInicialesBlancas = "B" ++ show x ++ show y
-  | even suma = " "
-  | otherwise = "X"
-  where
-    suma = uncurry (+) actual
-
 -- Fin de partida
 finDamas :: Tablero -> Bool
-finDamas t = (null dB && null rB) || (null dN && null rN) || null mvB || null mvN
+finDamas t = muertasB || muertasN || any null [movsDamas t "B", movsDamas t "N"]
   where
-    vivas = piezasVivas t
-    dB = cabeza "finDamas" vivas
-    rB = vivas !! 1
-    dN = vivas !! 2
-    rN = vivas !! 3
-    mvB = movsDamas t "B"
-    mvN = movsDamas t "N"
+    muertasB = all null [piezasVivas t !! i | i <- [0, 1]]
+    muertasN = all null [piezasVivas t !! i | i <- [2, 3]]
 
-bandoGanador :: Tablero -> [[String]] -> Double -> String
-bandoGanador t vivas punt
-  | finNegras = "blancas"
-  | finBlancas = "negras"
+bandoGanador :: Tablero -> [[String]] -> String
+bandoGanador t vivas
+  | (not hayNegras && hayBlancas) || (noHayMovimientos && desempate > 0) = "blancas"
+  | (not hayBlancas && hayNegras) || (noHayMovimientos && desempate < 0) = "negras"
   | otherwise = "empate"
   where
     nDB = fromIntegral $ length $ cabeza "bandoGanador" vivas
     nRB = fromIntegral $ length $ vivas !! 1
     nDN = fromIntegral $ length $ vivas !! 2
     nRN = fromIntegral $ length $ vivas !! 3
-    mvB = movsDamas t "B"
-    mvN = movsDamas t "N"
-    hayBlancas = nDB > 0.0 && nRB > 0.0
-    noHayBlancas = nDB == 0.0 && nRB == 0.0
-    hayNegras = nDN > 0.0 && nRN > 0.0
-    noHayNegras = nDN == 0.0 && nRN == 0.0
-    noHayMovimientos = null mvB || null mvN
-    finBlancas = (noHayBlancas && hayNegras) || (noHayMovimientos && punt > 0)
-    finNegras = (noHayNegras && hayBlancas) || (noHayMovimientos && punt > 0)
+    hayBlancas = nDB + nRB > 0.0
+    hayNegras = nDN + nRN > 0.0
+    noHayMovimientos = any null [movsDamas t "B", movsDamas t "N"]
+    desempate = nDB + nRB - nDN - nRN
 
 -- Movimientos
 casillasValidasDamas :: Tablero -> Pos -> ([Pos], Bool)
-casillasValidasDamas m posPieza@(f, c) = casillasPosibles
+casillasValidasDamas m posPieza@(f, _) = casillasPosibles
   where
-    bandoP = cabeza "casillasVaciasDamas" $ m ! posPieza
+    bandoP = bando $ m ! posPieza
     casillasAlrededor = casillasAlrededorFicha m posPieza
-    casillas
-      | bandoP == 'B' = filter (\(i, j) -> i < f) casillasAlrededor
-      | bandoP == 'N' = filter (\(i, j) -> i > f) casillasAlrededor
-      | otherwise = []
-    casillasAtaque
-      | bandoP == 'B' = filter (\(i, j) -> i < f) $ calculaCasillasAtaque m bandoP posPieza
-      | bandoP == 'N' = filter (\(i, j) -> i > f) $ calculaCasillasAtaque m bandoP posPieza
-      | otherwise = []
+    (casillas, casillasAtaque) = case bandoP of
+      'B' -> (filter (\(i, j) -> i < f) casillasAlrededor, filter (\(i, j) -> i < f) $ calculaCasillasAtaque m bandoP posPieza)
+      'N' -> (filter (\(i, j) -> i > f) casillasAlrededor, filter (\(i, j) -> i > f) $ calculaCasillasAtaque m bandoP posPieza)
+      _ -> ([], [])
     -- Obligación de la captura
     casillasPosibles
       | null casillasAtaque = (casillas, False)
       | otherwise = (casillasAtaque, True)
 
+-- Casillas validas para las reinas de la versión inglesa
 casillasValidasReinas :: Tablero -> Pos -> ([Pos], Bool)
-casillasValidasReinas m p = (diagonales, atacamos)
+casillasValidasReinas m p = casillasPosibles
   where
-    (mi, ma) = rangos m
-    pieza = m ! p
-    resultados
-      | pieza == "" || pieza == " " = []
-      | otherwise = [revisaDiagonal m p (a, b) pieza ([], False) | a <- [mi, ma], b <- [mi, ma]]
-    atacamos = any snd resultados
-    posiciones
-      | atacamos && not (null resultados) = filter (\(ps, a) -> not (null ps) && a) resultados
-      | not (null resultados) = filter (\(ps, _) -> not (null ps)) resultados
-      | otherwise = []
-    diagonales = nub $ concatMap (\(ps, _) -> nub ps) posiciones
+    bandoP = bando $ m ! p
+    casillasAtaque = calculaCasillasAtaque m bandoP p
+    -- Obligación de la captura
+    casillasPosibles
+      | null casillasAtaque = (casillasAlrededorFicha m p, False)
+      | otherwise = (casillasAtaque, True)
 
 calculaCasillasAtaque :: Tablero -> Char -> Pos -> [Pos]
 calculaCasillasAtaque m bando posPieza = filter (compruebaAtaque m bando posPieza) $ casillasSegundoNivel m posPieza
 
 compruebaAtaque :: Tablero -> Char -> Pos -> Pos -> Bool
-compruebaAtaque m bandoP posPieza@(f, c) posAtaque@(af, ac) = condiciones
+compruebaAtaque m bandoP posPieza@(f, _) posAtaque@(af, _) = condiciones
   where
     reina = esReina $ m ! posPieza
-    (posEliminada, _) = ataque m posPieza posAtaque reina
-    piezaEliminada = m ! posEliminada
+    piezaEliminada = m ! fst (ataque m posPieza posAtaque reina)
     bandoE = bando piezaEliminada
-    bandoContrario = (bandoE == 'B' && bandoP == 'N') || (bandoE == 'N' && bandoP == 'B')
-    condicionesBasicas = piezaEliminada /= "X" && piezaEliminada /= "" && piezaEliminada /= " " && bandoContrario
+    condicionesBasicas = piezaEliminada `notElem` ["X", "", " "] && bandoE /= bandoP
     condiciones
       | not reina && bandoP == 'B' = (f > af) && condicionesBasicas
       | not reina && bandoP == 'N' = (f < af) && condicionesBasicas
       | otherwise = condicionesBasicas
 
+-- Función casi perfecta para la versión española de las damas.
 revisaDiagonal :: Tablero -> Pos -> Pos -> String -> ([Pos], Bool) -> ([Pos], Bool)
 revisaDiagonal m p@(f, c) lims@(a, b) pieza (ps, at)
   | not (dentroDelTablero p m) = error mensajeError
-  | mismoNombre && dentroDelTablero pos m = revisaDiagonal m pos lims pieza (ps, at)
+  | nombre == pieza && dentroDelTablero pos m = revisaDiagonal m pos lims pieza (ps, at)
   | tocaLimite && casillaVacia m p = (p : ps, at)
-  | tocaLimite || mismoBando || (bandoContrario && not ataca) = (ps, at)
+  | tocaLimite || bandoActual == bandoPieza || (bandoContrario && not ataca) = (ps, at)
   | ataca || at = (pAtacadas, True)
   | otherwise = revisaDiagonal m pos lims pieza (p : ps, at)
   where
     mensajeError = "La posicion pasada de la pieza en revisaDiagonal es " ++ show p ++ "que esta fuera del tablero."
     tocaLimite = f == a || c == b
     nombre = m ! p
-    mismoNombre = nombre == pieza
     bandoActual = bando nombre
     bandoPieza = bando pieza
-    mismoBando = bandoActual == bandoPieza
-    bandoContrario = (bandoActual == 'B' && bandoPieza == 'N') || (bandoActual == 'N' && bandoPieza == 'B')
+    bandoContrario = bandoActual /= bandoPieza
     diferenciaFila = f - a
     diferenciaColumna = c - b
     filaE
@@ -200,20 +197,17 @@ revisaDiagonal m p@(f, c) lims@(a, b) pieza (ps, at)
 
 movsDamas :: Tablero -> String -> Movimientos
 movsDamas t marca
-  | atD && not atR = movimientosDamas
-  | not atD && atR = movimientosReinas
-  | otherwise = movimientosDamas ++ movimientosReinas
+  | atD && not atR = nub mvD
+  | not atD && atR = nub mvR
+  | otherwise = nub mvD ++ nub mvR
   where
-    vivas = piezasVivas t
-    (posDamas, posReinas) = posicionesSegunBando t marca vivas
+    (posDamas, posReinas) = posicionesSegunBando t marca $ piezasVivas t
     (mvD, atD)
       | null posDamas = ([], False)
       | otherwise = mueveDama t (posDamas, False) []
     (mvR, atR)
       | null posReinas = ([], False)
       | otherwise = mueveReina t (posReinas, False) []
-    movimientosDamas = nub mvD
-    movimientosReinas = nub mvR
 
 posicionesSegunBando :: Tablero -> String -> [[String]] -> ([Pos], [Pos])
 posicionesSegunBando t marca vivas = (posDamas, posReinas)
@@ -223,12 +217,12 @@ posicionesSegunBando t marca vivas = (posDamas, posReinas)
     damasNegras = vivas !! 2
     reinasNegras = vivas !! 3
     posDamas
-      | marca == "B" && not (null damasBlancas) = [buscaPieza t m | m <- damasBlancas]
-      | marca == "N" && not (null damasNegras) = [buscaPieza t m | m <- damasNegras]
+      | marca == "B" && not (null damasBlancas) = map (buscaPieza t)  damasBlancas
+      | marca == "N" && not (null damasNegras) = map (buscaPieza t) damasNegras
       | otherwise = []
     posReinas
-      | marca == "B" && not (null reinasBlancas) = [buscaPieza t m | m <- reinasBlancas]
-      | marca == "N" && not (null reinasNegras) = [buscaPieza t m | m <- reinasNegras]
+      | marca == "B" && not (null reinasBlancas) = map (buscaPieza t) reinasBlancas
+      | marca == "N" && not (null reinasNegras) = map (buscaPieza t) reinasNegras
       | otherwise = []
 
 mueveDama :: Tablero -> ([Pos], Bool) -> Movimientos -> (Movimientos, Bool)
@@ -261,19 +255,19 @@ mueveReina t (r : rs, at) movs
 
 atacaOintercambia :: Tablero -> String -> Pos -> Pos -> Movimientos
 atacaOintercambia t nombre posNueva posAntigua
-  | ataca = atacaPieza nuevoT nuevoNombre posNueva reina
+  | nuevoNombre /= nombre = [(nuevoT, posNueva)]
+  | ataca = atacaPieza nuevoT nuevoNombre posNueva $ esReina nuevoNombre
   | otherwise = [(nuevoT, posNueva)]
   where
     (posPiezaEliminada, ataca) = ataque t posAntigua posNueva (esReina nombre)
     nuevoNombre = nombreActualizado t nombre posNueva
-    reina = esReina nuevoNombre
     t' = intercambiaPieza t nuevoNombre posNueva posAntigua
     nuevoT
       | ataca = eliminaPieza t' posPiezaEliminada
       | otherwise = t'
 
 atacaPieza :: Tablero -> String -> Pos -> Bool -> Movimientos
-atacaPieza t nombre p@(f, c) reina
+atacaPieza t nombre p@(f, _) reina
   | null casillasAtaque = [(t, p)]
   | not reina && (null casillasAtaque || null casillas) = [(t, p)]
   | otherwise = concatMap (\v -> atacaOintercambia t nombre v p) validas
@@ -288,7 +282,7 @@ atacaPieza t nombre p@(f, c) reina
       | otherwise = casillas
 
 ataque :: Tablero -> Pos -> Pos -> Bool -> (Pos, Bool)
-ataque t og@(x, y) atacada@(i, j) reina = (pos, ataca)
+ataque t og@(x, y) atacada@(i, j) reina = (pos, ataca && ((t ! pos) `notElem` ["X",""," "]))
   where
     diferenciaFila = x - i
     diferenciaColumna = y - j
@@ -299,18 +293,18 @@ ataque t og@(x, y) atacada@(i, j) reina = (pos, ataca)
       | diferenciaColumna < 0 = j -1
       | otherwise = j + 1
     pos = (filaE, columnaE)
-    piezaE = t ! pos
-    existe = piezaE /= "X" && piezaE /= "" && piezaE /= " "
     ataca
-      | reina = ((abs diferenciaFila >= 2) || (abs diferenciaColumna >= 2)) && existe
-      | otherwise = ((abs diferenciaFila == 2) || (abs diferenciaColumna == 2)) && existe
+      | reina = (abs diferenciaFila >= 2) || (abs diferenciaColumna >= 2)
+      | otherwise = (abs diferenciaFila == 2) || (abs diferenciaColumna == 2)
 
 -- Puntuaciones
 puntuaDamas :: Tablero -> Pos -> IO Double
 puntuaDamas t pos = do
-  -- Necesitamos saber 2 cosas, cuantas piezas hay de cada bando y a cuál pertenecemos
+  {- Necesitamos saber el número de piezas de cada bando, si atacamos o somos atacados,
+  cuánto controlamos el centro, y si tenemos ventajas posicionales en los laterales del tablero. -}
+  {- Información -}
+  -- Información sobre el número de piezas y bando
   let pieza = t ! pos
-  let reina = esReina pieza
   let bandoActual = bando pieza
   let vivas = piezasVivas t
   let nDB = fromIntegral $ length $ cabeza "puntuaDamas" vivas
@@ -319,36 +313,42 @@ puntuaDamas t pos = do
   let nRN = fromIntegral $ length $ vivas !! 3
   let esBlanco = bandoActual == 'B'
   let esNegro = bandoActual == 'N'
-  let puntuacionBlancas
-        | esBlanco = 2.5 * nRB + nDB
-        | esNegro = - (2.5 * nRB + nDB)
+  -- Información sobre los ataques
+  let longAtaque = length $ atacaPieza t pieza pos $ esReina pieza
+  let alrededor = map (\p -> (t ! p, p)) $ fichasAlrededorCasilla t pos
+  let longAtaques = length $ concatMap (\(nom, p) -> atacaPieza t nom p (esReina nom)) alrededor
+  -- Información del tablero
+  let (mi, ma) = rangos t
+  let distanciaAlCentro = div (div ma 2) 2
+  let limiteInf = mi + distanciaAlCentro
+  let limiteSup = ma - distanciaAlCentro
+  let psLaterales = [(x, y) | x <- [mi .. ma], y <- [mi], even (x + y)] ++ [(x, y) | x <- [mi .. ma], y <- [ma], even (x + y)]
+  -- Información sobre la victoria
+  let ganador = bandoGanador t vivas
+  {- Cálculo de las puntuaciones -}
+  let puntuacionPiezas
+        | esBlanco = valorReina * nRB + valorDama * nDB - (valorReina * nRN + valorDama * nDN)
+        | esNegro = valorReina * nRN + valorDama * nDN - (valorReina * nRB + valorDama * nDB)
         | otherwise = 0.0
-  let puntuacionNegras
-        | esNegro = 2.5 * nRN + nDN
-        | esBlanco = - (2.5 * nRN + nDN)
-        | otherwise = 0.0
-  let ataque = atacaPieza t pieza pos reina
-  let ataques = concatMap (\(nom, p) -> atacaPieza t nom p (esReina nom)) (piezasAlrededor t pos)
   let puntuacionAtaca
-        | null ataque = 0.0
-        | otherwise = 2.0 * fromIntegral (length ataque)
-  let puntuacionAtacado
-        | null ataques = 0.0
-        | otherwise = -2.0
-  let puntuacionFinal = puntuacionBlancas + puntuacionNegras + puntuacionAtaca + puntuacionAtacado
-  let ganador = bandoGanador t vivas puntuacionFinal
-  let hasGanado = (esBlanco && ganador == "blancas") || (esNegro && ganador == "negras")
-  let puntuacionGanar
-        | hasGanado = 30.0
+        | longAtaque >= 2 = valorAtaque * fromIntegral (longAtaque - 1)
         | otherwise = 0.0
-  return $ puntuacionFinal + puntuacionGanar
-
-piezasAlrededor :: Tablero -> Pos -> [(String, Pos)]
-piezasAlrededor t pos = nomsYps
-  where
-    posiciones = fichasAlrededorCasilla t pos
-    nombres = map (t !) posiciones
-    nomsYps = zip nombres posiciones
+  let puntuacionAtacado
+        | longAtaques > length alrededor = - (valorAtacado * fromIntegral (longAtaques - length alrededor))
+        | otherwise = 0.0
+  let puntuacionCentral
+        -- Posición de la pieza si pertenece a las posiciones centrales
+        | pos `elem` [(x, y) | x <- [limiteInf .. limiteSup], y <- [limiteInf .. limiteSup], even (x + y)] = penalizacionCentral
+        | otherwise = 0.0
+  let puntuacionTerreno
+        | pos `elem` psLaterales && longAtaque >= 2 = valorAprovechamientoTerreno
+        | otherwise = 0.0
+  -- Cálculo y asignación final de puntuación
+  let puntuacion
+        | (esBlanco && ganador == "blancas") || (esNegro && ganador == "negras") = 1000.0
+        | (esBlanco && ganador == "negras") || (esNegro && ganador == "blancas") = -1000.0
+        | otherwise = puntuacionPiezas + puntuacionAtaca + puntuacionAtacado
+  return puntuacion
 
 {- +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 Funciones para los gráficos
@@ -392,7 +392,7 @@ alturasEstaticas = [dif, turnosYmarcas]
     turnosYmarcas = alturasCasillas !! 5
 
 posMenu :: Point
-posMenu = ((- ancho) - 3*ajusteInicial, ancho + ajusteInicial)
+posMenu = ((- ancho) - 3 * ajusteInicial, ancho + ajusteInicial)
 
 posOpciones :: Point
 posOpciones = ((- ancho) - 4 * ajusteInicial, ancho)
@@ -411,27 +411,23 @@ posVolver = (ancho + 4 * ajusteInicial, ancho)
 
 posBoton :: Point
 posBoton = (ancho - ajusteInicial / 2, (- ancho) + 4 * ajusteInicial)
+
 -- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Fin parámetros %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 matrizPosiciones :: Matrix Point
 matrizPosiciones = matrix t t $ \p -> fst (cabeza "matrizPosiciones" (filter (\(cas, pos) -> pos == p) relacion))
   where
     t = round tamMatriz
-    ps = [(i, j) | i <- [1 .. t], j <- [1 .. t]]
     d = diferenciaParaCasillas
     a = (- ancho) + ajusteInicial
     anchurasImpares = [a, a + (2 * d) .. a + ((tamMatriz -2.0) * d)]
     anchurasPares = [a + d, a + (3 * d) .. a + ((tamMatriz -1.0) * d)]
-    alturasImpares = reverse anchurasPares
-    alturasPares = reverse anchurasImpares
-    bCuadImpares = [(j, i) | i <- alturasImpares, j <- anchurasImpares]
-    nCuadImpares = [(j, i) | i <- alturasImpares, j <- anchurasPares]
-    filasImpares = uneCasillas bCuadImpares nCuadImpares
-    nCuadPares = [(j, i) | i <- alturasPares, j <- anchurasImpares]
-    bCuadPares = [(j, i) | i <- alturasPares, j <- anchurasPares]
-    filasPares = uneCasillas nCuadPares bCuadPares
-    casillas = uneFilas filasImpares filasPares
-    relacion = zip casillas ps
+    bCuadImpares = [(j, i) | i <- reverse anchurasPares, j <- anchurasImpares]
+    nCuadImpares = [(j, i) | i <- reverse anchurasPares, j <- anchurasPares]
+    nCuadPares = [(j, i) | i <- reverse anchurasImpares, j <- anchurasImpares]
+    bCuadPares = [(j, i) | i <- reverse anchurasImpares, j <- anchurasPares]
+    casillas = uneFilas (uneCasillas bCuadImpares nCuadImpares) (uneCasillas nCuadPares bCuadPares)
+    relacion = zip casillas [(i, j) | i <- [1 .. t], j <- [1 .. t]]
 
 alturasCasillas :: [Float]
 alturasCasillas = [a, a - diferencia .. 0]
@@ -446,10 +442,8 @@ casillasNegras = uneCasillas cuadradosImpares cuadradosPares
     a = (- ancho) + ajusteInicial
     anchurasImpares = [a, a + (2 * d) .. a + ((tamMatriz -2.0) * d)]
     anchurasPares = [a + d, a + (3 * d) .. a + ((tamMatriz -1.0) * d)]
-    alturasImpares = reverse anchurasPares
-    alturasPares = reverse anchurasImpares
-    cuadradosImpares = [(j, i) | i <- alturasImpares, j <- anchurasPares]
-    cuadradosPares = [(j, i) | i <- alturasPares, j <- anchurasImpares]
+    cuadradosImpares = [(j, i) | i <- reverse anchurasPares, j <- anchurasPares]
+    cuadradosPares = [(j, i) | i <- reverse anchurasImpares, j <- anchurasImpares]
 
 casillasBlancas :: [Point]
 casillasBlancas = uneCasillas cuadradosImpares cuadradosPares
@@ -458,21 +452,18 @@ casillasBlancas = uneCasillas cuadradosImpares cuadradosPares
     a = (- ancho) + ajusteInicial
     anchurasImpares = [a, a + (2 * d) .. a + ((tamMatriz -2.0) * d)]
     anchurasPares = [a + d, a + (3 * d) .. a + ((tamMatriz -1.0) * d)]
-    alturasImpares = reverse anchurasPares
-    alturasPares = reverse anchurasImpares
-    cuadradosImpares = [(j, i) | i <- alturasImpares, j <- anchurasImpares]
-    cuadradosPares = [(j, i) | i <- alturasPares, j <- anchurasPares]
+    cuadradosImpares = [(j, i) | i <- reverse anchurasPares, j <- anchurasImpares]
+    cuadradosPares = [(j, i) | i <- reverse anchurasImpares, j <- anchurasPares]
 
 cambiaOpcion :: Point -> Mundo -> Int -> String -> IO Mundo
-cambiaOpcion raton mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, seleccionado, esMaquina, adicional) nivel opcion
+cambiaOpcion raton mundo nivel opcion
   | nivel == 0 = do
-    let nuevoMundo = (mov, juego, traduceDif opcion, traduceProf opcion, marca, turno, seleccionado, esMaquina, adicional)
-    return nuevoMundo
-  | nivel == 1 = do
-    let nuevoMundo = (mov, juego, dif, prof, traduceMarca opcion, turno, seleccionado, esMaquina, adicional)
-    return nuevoMundo
+    let dif = traduceDif opcion
+    let prof = traduceProf opcion
+    return $ ponDificultad (ponProfundidad mundo prof) dif
+  | nivel == 1 = return $ ponMarca mundo $ traduceMarca opcion
   | nivel == 99 = return mundo
-  | otherwise = error "El nivel de opciones especificado para la función cambiaOpción del juego del gato no existe."
+  | otherwise = error "El nivel de opciones especificado para la función cambiaOpción del juego de las damas no existe."
 
 creaTableroConOpciones :: Mundo -> Mundo
 creaTableroConOpciones mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, seleccionado, esMaquina, adicional)
@@ -484,92 +475,99 @@ creaTableroConOpciones mundo@(mov@(estado, pos), juego, dif, prof, marca, turno,
       | otherwise = prof
     ad = [nombresBlancas, nombresReinasBlancas, nombresNegras, nombresReinasNegras]
 
+accionRealizada :: Mundo -> (String, Point) -> String -> IO Mundo
+accionRealizada mundo (pulsado, accion) temporal
+  | pulsado == etiquetaOpciones = return $ (iniciaOpciones . dameJuego) mundo
+  | pulsado == etiquetaCargar = return menuCargarPartida
+  | pulsado == etiquetaGuardar = do
+    guardarPartida mundo
+    return mundo
+  | pulsado == etiquetaVolver = cargarPartida temporal
+  | pulsado == "accion" = do
+    -- Guardamos el estado actual en un archivo temporal
+    temporalPartida mundo
+    calculaNuevoEstado accion mundo
+  | otherwise = return mundo
+
 calculaNuevoEstado :: Point -> Mundo -> IO Mundo
-calculaNuevoEstado casilla mundo@(mov@(estado, pos), juego, dif, prof, marca, turno, seleccionado, esMaquina, adicional)
-  | damaSeleccionada && (posSeñalada `elem` validasDamas) = do
-    calculaMundo posSeñalada mundo
-  | reinaSeleccionada && (posSeñalada `elem` validasReinas) = do
+calculaNuevoEstado casilla mundo
+  | (damaSeleccionada && (posSeñalada `elem` validasDamas)) || (reinaSeleccionada && (posSeñalada `elem` validasReinas)) = do
     calculaMundo posSeñalada mundo
   | ((marca == "B") && elBlancas) || ((marca == "N") && elNegras) = do
-    return (mov, juego, dif, prof, marca, turno, el, False, adicional)
+    return $ ponSeleccionado (ponEsMaquina mundo False) el
   | otherwise = return mundo
   where
-    -- Inicializamos los datos que no tenemos aún y que vamos a necesitar
-    t = round tamMatriz
-    ps = [(i, j) | i <- [1 .. t], j <- [1 .. t]]
-    matrz = toList matrizPosiciones
-    relacionadas = zip matrz ps
-    posSeñalada = snd $ cabeza "calculaNuevoEstado" $ filter (\(c, p) -> c == casilla) relacionadas
-    posPieza = buscaPieza estado seleccionado
+    estado = (fst . dameMovimiento) mundo
+    marca = dameMarca mundo
+    seleccionado = dameSeleccionado mundo
+    (base, lim) = rangos estado
+    relacionadas = zip (toList matrizPosiciones) [(i, j) | i <- [base .. lim], j <- [base .. lim]]
+    posSeñalada = (snd . cabeza "calculaNuevoEstado" . filter (\(c, p) -> c == casilla)) relacionadas
     (validasDamas, validasReinas) = casillasDisponiblesParaElJugador mundo
     -- Hacemos algunas preguntas sobre la pieza señalada
     damaSeleccionada = (seleccionado `elem` nombresBlancas) || (seleccionado `elem` nombresNegras)
     reinaSeleccionada = (seleccionado `elem` nombresReinasBlancas) || (seleccionado `elem` nombresReinasNegras)
     el = estado ! posSeñalada
-    elBlancas = (el `elem` nombresBlancas) || (el `elem` nombresReinasBlancas)
-    elNegras = (el `elem` nombresNegras) || (el `elem` nombresReinasNegras)
+    elBlancas = el `elem` (nombresBlancas ++ nombresReinasBlancas)
+    elNegras = el `elem` (nombresNegras ++ nombresReinasNegras)
 
 casillasDisponiblesParaElJugador :: Mundo -> ([Pos], [Pos])
-casillasDisponiblesParaElJugador ((estado, _), _, _, _, marca, _, seleccionado, _, _) = (validasDamas, validasReinas)
+casillasDisponiblesParaElJugador mundo = (validasDamas, validasReinas)
   where
-    ad = piezasVivas estado
+    estado = (fst . dameMovimiento) mundo
+    marca = dameMarca mundo
+    seleccionado = dameSeleccionado mundo
     posPieza = buscaPieza estado seleccionado
-    (posDamas, posReinas) = posicionesSegunBando estado marca ad
+    (posDamas, posReinas) = posicionesSegunBando estado marca $ piezasVivas estado
     psYatsDamas
       | null posDamas = [([], False)]
       | otherwise = map (casillasValidasDamas estado) posDamas
     psYatsReinas
       | null posReinas = [([], False)]
       | otherwise = map (casillasValidasReinas estado) posReinas
-    atacanDamas
-      | any snd psYatsDamas = True
-      | otherwise = False
-    atacanReinas
-      | any snd psYatsReinas = True
-      | otherwise = False
-    casillasDama | null seleccionado = ([], False)
+    atacanDamas = any snd psYatsDamas
+    atacanReinas = any snd psYatsReinas
+    casillasDama
+      | null seleccionado = ([], False)
       | otherwise = casillasValidasDamas estado posPieza
-    casillasReina | null seleccionado = ([], False)
+    casillasReina
+      | null seleccionado = ([], False)
       | otherwise = casillasValidasReinas estado posPieza
     validasDamas
-      | not (snd casillasDama) && atacanDamas = []
-      | not (snd casillasDama) && atacanReinas = []
+      | (not (snd casillasDama) && atacanDamas) || (not (snd casillasDama) && atacanReinas) = []
       | otherwise = fst casillasDama
     validasReinas
-      | not (snd casillasReina) && atacanReinas = []
-      | not (snd casillasReina) && atacanDamas = []
+      | (not (snd casillasReina) && atacanReinas) || (not (snd casillasReina) && atacanDamas) = []
       | otherwise = fst casillasReina
 
 calculaMundo :: Pos -> Mundo -> IO Mundo
-calculaMundo casilla ((estado, pos), juego, dif, prof, marca, turno, seleccionado, esMaquina, adicional) = do
+calculaMundo casilla mundo = do
+  let estado = (fst . dameMovimiento) mundo
+  let marca = dameMarca mundo
+  let seleccionado = dameSeleccionado mundo
   let posAntigua = buscaPieza estado seleccionado
-  let reina = esReina seleccionado
-  let (posEliminada, ataca) = ataque estado posAntigua casilla reina
+  let (posEliminada, ataca) = ataque estado posAntigua casilla $ esReina seleccionado
   let e
-        | ataca = eliminaPieza estado posEliminada
+        | ataca = intercambiaPieza estado seleccionado casilla posAntigua
         | otherwise = estado
-  let e' = intercambiaPieza e seleccionado casilla posAntigua
+  let e' = eliminaPieza e posEliminada
   let nuevoNombre = nombreActualizado e' seleccionado casilla
-  let bandoP = bando seleccionado
   let nuevoEstado = setElem nuevoNombre casilla e'
-  let casillasAtaque = calculaCasillasAtaque nuevoEstado bandoP casilla
+  let casillasAtaque = calculaCasillasAtaque nuevoEstado (bando seleccionado) casilla
   let sel
         | null casillasAtaque || not ataca = ""
         | otherwise = nuevoNombre
-  let tocaMaquina = null casillasAtaque || not ataca
+  let tocaMaquina = null casillasAtaque || not ataca || nuevoNombre /= seleccionado
   let ad = piezasVivas nuevoEstado
   punt <- puntuaDamas nuevoEstado casilla
   let ad'
-        | marca == "B" && punt > 0 = ad ++ [["humano"]]
-        | marca == "N" && punt > 0 = ad ++ [["humano"]]
-        | marca == "B" && punt < 0 = ad ++ [["maquina"]]
-        | marca == "N" && punt < 0 = ad ++ [["maquina"]]
+        | (marca == "B" && punt > 0) || (marca == "N" && punt > 0) = ad ++ [["humano"]]
+        | (marca == "B" && punt < 0) || (marca == "N" && punt < 0) = ad ++ [["maquina"]]
         | otherwise = ad ++ [["empate"]]
   let ad''
         | finDamas nuevoEstado = ad'
         | otherwise = ad
-  let nuevoMundo = ((nuevoEstado, casilla), juego, dif, prof, marca, turno, sel, tocaMaquina, ad'')
-  return nuevoMundo
+  return $ ponMovimiento (ponSeleccionado (ponEsMaquina (ponAdicional mundo ad'') tocaMaquina) sel) (nuevoEstado, casilla)
 
 pintaMarca :: Pos -> Tablero -> Picture
 pintaMarca pos estado
@@ -586,6 +584,15 @@ pintaMarca pos estado
 Funciones auxiliares
 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ -}
 
+añadePiezas :: Pos -> String
+añadePiezas actual@(x, y)
+  | actual `elem` posicionesInicialesNegras = "N" ++ show x ++ show y
+  | actual `elem` posicionesInicialesBlancas = "B" ++ show x ++ show y
+  | even suma = " "
+  | otherwise = "X"
+  where
+    suma = uncurry (+) actual
+
 marcaMaquinaDamas :: String -> String
 marcaMaquinaDamas marca = if marca == "B" then "N" else "B"
 
@@ -601,13 +608,10 @@ nombreActualizado t nombre pos = actualizado
       | otherwise = nombre
 
 piezasVivas :: Tablero -> [[String]]
-piezasVivas t = [damasBlancas, reinasBlancas, damasNegras, reinasNegras]
+piezasVivas t = [filter (`elem` nombresBlancas) listaTablero, filter (`elem` nombresReinasBlancas) listaTablero,
+  filter (`elem` nombresNegras) listaTablero, filter (`elem` nombresReinasNegras) listaTablero]
   where
     listaTablero = toList t
-    damasBlancas = filter (`elem` nombresBlancas) listaTablero
-    reinasBlancas = filter (`elem` nombresReinasBlancas) listaTablero
-    damasNegras = filter (`elem` nombresNegras) listaTablero
-    reinasNegras = filter (`elem` nombresReinasNegras) listaTablero
 
 bando :: String -> Char
 bando pieza
@@ -622,33 +626,17 @@ esReina :: String -> Bool
 esReina pieza = cabeza "esReina" pieza == 'R'
 
 uneFilas :: [Point] -> [Point] -> [Point]
-uneFilas fi fp = f1 ++ f2 ++ uneFilas ri rp
+uneFilas fi fp = take tam fi ++ take tam fp ++ uneFilas (drop tam fi) (drop tam fp)
   where
     tam = round tamMatriz
-    f1 = take tam fi
-    f2 = take tam fp
-    ri = drop tam fi
-    rp = drop tam fp
 
 uneCasillas :: [Point] -> [Point] -> [Point]
-uneCasillas [] _ = []
-uneCasillas _ [] = []
-uneCasillas (a : as) (b : bs) = [a, b] ++ uneCasillas as bs
+uneCasillas as bs = concat [[a, b] | (a, b) <- zip as bs]
 
 turnoApos :: Int -> Pos
 turnoApos turno
   | turno == 0 = (1, 1)
-  | otherwise = (f, c)
-  where
-    pos = show turno
-    tamTurno = length pos
-    componentes
-      | even tamTurno = pos
-      | otherwise = "0" ++ pos
-    longCom = length componentes
-    tamComponente = longCom `div` 2
-    f = stringToInt $ take tamComponente componentes
-    c = stringToInt $ drop tamComponente componentes
+  | otherwise = (turno `div` 10, turno `mod` 10)
 
 posAturno :: Pos -> Int
 posAturno (f, c) = stringToInt turno
@@ -658,36 +646,32 @@ posAturno (f, c) = stringToInt turno
     lf = length fs
     lc = length cs
     diferencia = abs (lf - lc)
-    ceros = cerosEnCadena diferencia
+    ceros = concat $ replicate (abs (lf - lc)) "0"
     turno
       | lf > lc = fs ++ ceros ++ cs
       | otherwise = ceros ++ fs ++ cs
 
-cerosEnCadena :: Int -> String
-cerosEnCadena 0 = ""
-cerosEnCadena d = "0" ++ cerosEnCadena (d -1)
-
 traduceDif :: String -> Int
-traduceDif dif
-  | dif == "Lowest" = 1
-  | dif == "Easy" = 2
-  | dif == "Medium" = 3
-  | dif == "Hard" = 4
-  | otherwise = 0
+traduceDif dif = case dif of
+  "Lowest" -> 1
+  "Easy" -> 2
+  "Medium" -> 3
+  "Hard" -> 4
+  _ -> 0
 
 traduceProf :: String -> Int
-traduceProf dif
-  | dif == "Lowest" = 1
-  | dif == "Easy" = 2
-  | dif == "Medium" = 4
-  | dif == "Hard" = 5
-  | otherwise = 1
+traduceProf dif = case dif of
+  "Lowest" -> 2
+  "Easy" -> 3
+  "Medium" -> 4
+  "Hard" -> 5
+  _ -> 1
 
 traduceMarca :: String -> String
-traduceMarca marca
-  | marca == "White" = "B"
-  | marca == "Black" = "N"
-  | otherwise = "Fallo"
+traduceMarca marca = case marca of
+  "White" -> "B"
+  "Black" -> "N"
+  _ -> "Fallo"
 
 pintaBlanca :: Point -> Picture
 pintaBlanca (x, y) = translate x y dama
