@@ -145,13 +145,15 @@ hazMovimientoDamas :: Point -> Mundo -> IO Mundo
 hazMovimientoDamas raton mundo = do
   -- Preparamos el acceso al archivo temporal
   temporal <- caminoTemporal
+  -- Comprobamos si hay partidas guardadas
+  hayPartidas <- hayPartidasGuardadas
   -- Casillas donde puede haber pulsado el jugador para interaccionar con el juego
   let posCasillas = casillasBlancas
   -- Comprobamos si ha pulsado cerca de alguna casilla para realizar una acción de juego  
   let posBotones = [posOpciones, posCargarJuego, posGuardarJuego, posVolver]
   let pulsacion = devuelvePulsacion raton casillasBlancas posBotones
   -- Finalmente realizamos la acción en caso de que la hubiera y fuera realizable ó simplemente no devolvemos nada nuevo
-  accionRealizada mundo pulsacion temporal
+  accionRealizada mundo pulsacion temporal hayPartidas
 
 {- Función para el turno de la máquina -}
 mueveMaquinaDamas :: Mundo -> IO Mundo

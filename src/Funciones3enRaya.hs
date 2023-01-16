@@ -174,10 +174,10 @@ creaTableroConOpciones (_, juego, dif, prof, marca, turno, seleccionado, esMaqui
       | otherwise = prof
     mundo = (inicial, juego, dif, p, m, turno, seleccionado, turno == 2, adicional)
 
-accionRealizada :: Mundo -> (String, Point) -> String -> [Point] -> IO Mundo
-accionRealizada mundo (pulsado, accion) temporal posiblesAcciones
+accionRealizada :: Mundo -> (String, Point) -> String -> [Point] -> Bool -> IO Mundo
+accionRealizada mundo (pulsado, accion) temporal posiblesAcciones hayPartidas
   | pulsado == etiquetaOpciones = return $ iniciaOpciones juego
-  | pulsado == etiquetaCargar = return menuCargarPartida
+  | pulsado == etiquetaCargar && hayPartidas = return menuCargarPartida
   | pulsado == etiquetaGuardar = do
     guardarPartida mundo
     return mundo
