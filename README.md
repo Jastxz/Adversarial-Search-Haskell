@@ -22,7 +22,8 @@ La aplicación en general es muy sencillita. Consta de tres tipos de pantallas q
 
 ### Menú inicial
 Esta pantalla es simplemente la lista de los títulos seleccionables, tal como muestra la siguiente imagen:
-![Menú inicial](file://img/main-menu "Menú inicial")
+
+![Menú inicial](https://i.imgur.com/R6kQ7Ja.png "Menú inicial")
 
 Lo único que podemos hacer es pulsar en el juego para cargar el menú de opciones del mismo.
 
@@ -33,16 +34,25 @@ Todas las pantallas de opciones se componen de la misma forma:
 
 - Una serie de botones:
 1. Un botón para volver a la selección de juegos.
-![Botón del menú inicial](file://img/main-menu-btn "Botón para volver al menú inicial")
+
+![Botón del menú inicial](https://i.imgur.com/P7Ut4IB.png "Botón para volver al menú inicial")
+
 2. Un botón para comenzar una partida con las opciones seleccionadas.
-![Botón de comenzar](file://img/start-btn "Botón para comenzar la partida")
+
+![Botón de comenzar](https://i.imgur.com/ghWnEP5.png "Botón para comenzar la partida")
+
 3. Un botón para cargar una partida guardada de cualquier juego.
-![Botón de cargar](file://img/load-btn "Botón para cargar una partida")
+
+![Botón de cargar](https://i.imgur.com/0mn3GA1.png "Botón para cargar una partida")
+
 - Bloque de opción, que puede ser del tipo:
 1. Varias checkbox para determinar la elección de ese ajuste específico.
-![Opción checkbox](file://img/checkbox-option "Opción mediante checkboxes")
+
+[Opción mediante checkboxes](https://i.imgur.com/936g3As.png "Opción mediante checkboxes")
+
 2. Un tablero que se habilita o deshabilita según alguna de las opciones anteriores y que permite la dispoción inicial de **una** pieza en el tablero. (Implementado solo en el 'Ratón vs Gatos' a fecha 2/12/2022)
-![Tablero de opciones](file://img/options-board "Tablero de las opciones")
+
+![Tablero de opciones](https://i.imgur.com/jE11M73.png "Tablero de las opciones")
 
 ### Pantalla de juego
 Lo único variable cuando se carga el juego elegido es la estructura del tablero mostrada. Todos los juegos tienen la misma cantidad de botones y en todos los juegos lo que podemos hacer como mucho es pulsar en la pantalla.
@@ -51,28 +61,43 @@ Para todos los juegos podemos dividir la pantalla de juego en:
 
 - Una serie de botones:
 1. Un botón para volver al menú de opciones.
-![Botón del menú de opciones](file://img/options-btn "Botón para volver al menú de opciones")
+
+![Botón del menú de opciones](https://i.imgur.com/SCAXYDR.png "Botón para volver al menú de opciones")
+
 2. Un botón para deshacer **un** movimiento.
-![Botón de volver](file://img/back-btn "Botón para deshacer un solo movimiento")
+
+![Botón de volver](https://i.imgur.com/9yMP0dO.png "Botón para deshacer un solo movimiento")
+
 3. Un botón para cargar una partida guardada de cualquier juego.
-![Botón de cargar 2](file://img/load-btn-2 "Botón para cargar una partida")
+
+![Botón de cargar 2](https://i.imgur.com/mjuisdy.png "Botón para cargar una partida")
+
 4. Un botón para guardar la partida actual.
-![Botón de guardar](file://img/save-btn "Botón para guardar una partida")
+
+![Botón de guardar](https://i.imgur.com/MiSuxdB.png "Botón para guardar una partida")
+
 - Un par de mensajes:
 1. Un mensaje que te indica a quién le toca.
-![Indicación 1](file://img/indication "Mensaje de indicación de turno")
+
+![Indicación 1](https://i.imgur.com/DA8jvRm.png "Mensaje de indicación de turno")
+
 2. Un mensaje que te proporciona información del juego.
-![Indicación 2](file://img/indication-2 "Mensaje con información de la partida")
+
+![Indicación 2](https://i.imgur.com/p23yQTE.png "Mensaje con información de la partida")
+
 - Un tablero sobre el que jugar.
-![Tablero](file://img/board "Tablero")
+
+![Tablero](https://i.imgur.com/UDZdZBT.png "Tablero")
 
 ### Pantalla de fin del juego
 Esta pantalla la veremos cada vez que se acabe el juego ejecutado. Simplemente aparecerá un mensaje por pantalla que nos especificará quién ha ganado, si tú o la máquina.
-![Pantalla de fin del juego](file://img/endgame-screen "Pantalla de fin del juego")
+
+![Pantalla de fin del juego](https://i.imgur.com/w7DDtO4.png "Pantalla de fin del juego")
 
 ### Menú de cargar partida
 Un pequeño menú que te muestra los archivos guardados disponibles y te deja escoger entre ellos. Vale la pena añadir que si intentas cargar una documento que no sea de tipo *.txt* o que no tenga el mismo formato que las partidas guardadas, simplemente fallará.
-![Menú de cargar partida](file://img/load-menu "Menú de cargar partida")
+
+![Menú de cargar partida](https://i.imgur.com/TuAzwtB.png "Menú de cargar partida")
 
 ### Pantalla de errores
 Exactamente igual que la de fin del juego pero con mensajes variados sobre posibles errores que en teoría no deben ocurrir.
