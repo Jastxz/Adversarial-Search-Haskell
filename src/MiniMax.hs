@@ -25,11 +25,10 @@ negamax mov dificultad profundidad marcaMaquina juego
 
 iteraNegamax :: Movimiento -> Int -> String -> String -> IO TableroPuntuado
 iteraNegamax (estado, pos) profundidad marcaMaquina juego = do
-  let esFinal = esEstadoFinal estado juego
   puntuacion <- puntuaEstado estado pos juego
   --   Obtenemos los movimientos de la máquina o humano del nivel actual
   let movsPosibles = movimientosPosibles estado marcaMaquina juego
-  if esFinal || profundidad <= 0
+  if esEstadoFinal estado juego || profundidad <= 0
     then do
       return (estado, puntuacion)
     else do
@@ -50,11 +49,10 @@ Negamax con poda
 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ -}
 negamaxConPoda :: Movimiento -> Int -> String -> String -> Double -> Double -> IO TableroPuntuado
 negamaxConPoda (estado, pos) profundidad marcaMaquina juego alfa beta = do
-  let esFinal = esEstadoFinal estado juego
   puntuacion <- puntuaEstado estado pos juego
   --   Obtenemos los movimientos de la máquina o humano del nivel actual
   let movsPosibles = movimientosPosibles estado marcaMaquina juego
-  if esFinal || profundidad <= 0
+  if esEstadoFinal estado juego || profundidad <= 0
     then do
       return (estado, puntuacion)
     else do
@@ -99,11 +97,10 @@ Negamax completo
 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ -}
 negamaxCompleto :: Movimiento -> Int -> String -> String -> Double -> Double -> IO TableroPuntuado
 negamaxCompleto (estado, pos) profundidad marcaMaquina juego alfa beta = do
-  let esFinal = esEstadoFinal estado juego
   puntuacion <- puntuaEstado estado pos juego
   --   Obtenemos los movimientos de la máquina o humano del nivel actual
   let movsPosibles = movimientosPosibles estado marcaMaquina juego
-  if esFinal || profundidad < (-1)
+  if esEstadoFinal estado juego || profundidad < (-1)
     then do
       return (estado, puntuacion)
     else do
