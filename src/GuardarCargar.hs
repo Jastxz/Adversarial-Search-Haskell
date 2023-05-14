@@ -74,7 +74,7 @@ guardarPartida mundo = do
 
 caminoTemporal :: IO String
 caminoTemporal = do
-  caminoPartidas <- getTemporaryDirectory
+  caminoPartidas <- directorioPartidas
   return (caminoPartidas </> "temporalTFG.txt")
 
 temporalPartida :: Mundo -> IO()
