@@ -54,7 +54,6 @@ cargarPartida caminoArchivo = do
 
 guardarPartida :: Mundo -> IO Mundo
 guardarPartida mundo = do
-  preparaDirectorios
   caminoPartidas <- directorioPartidas
   archivos <- listDirectory caminoPartidas
   let juego = dameJuego mundo
@@ -74,6 +73,7 @@ guardarPartida mundo = do
 
 caminoTemporal :: IO String
 caminoTemporal = do
+  preparaDirectorios
   caminoPartidas <- directorioPartidas
   return (caminoPartidas </> "temporalTFG.txt")
 
