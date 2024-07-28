@@ -1,6 +1,8 @@
 # Adversarial-Search-Haskell
 Resumen: Búsqueda de estados en juegos con adversario implementado en Haskell y aplicado a algunos juegos
 
+## Continuación del proyecto
+Esto proyecto continúa su evolución en el siguiente repositorio: https://github.com/Jastxz/TFM
 
 ## Objetivo de este documento
 Este documento pretende ser solo un manual de uso para la aplicación asociada. No se cubrirán detalles del código ni del funcionamiento del mismo.
