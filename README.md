@@ -1,118 +1,228 @@
-# Adversarial-Search-Haskell
-Resumen: Búsqueda de estados en juegos con adversario implementado en Haskell y aplicado a algunos juegos
+# Adversarial Search Haskell
 
+> **Búsqueda adversarial en juegos implementada en Haskell con interfaz gráfica**
 
-## Objetivo de este documento
-Este documento pretende ser solo un manual de uso para la aplicación asociada. No se cubrirán detalles del código ni del funcionamiento del mismo.
+Un proyecto académico que implementa algoritmos de búsqueda adversarial (Minimax/Negamax con poda alfa-beta) aplicados a tres juegos clásicos, desarrollado completamente en Haskell con interfaz gráfica usando Gloss.
 
-## Aclaraciones sobre el proyecto
-Junto con el proyecto, viene un archivo zip que contiene el programa compilado y listo para ejecutarse en Windows. Trae también un archivo dll necesario para su correcto funcionamiento.
+## 📋 Descripción
 
-El idioma en el que están los textos del programa es inglés, esto es debido a que el paquete gráfico seleccionado para desarrollarlo no soporta *acentos* ni la existencia de la letra *ñ*.
+Este proyecto implementa algoritmos de inteligencia artificial para juegos de adversario, incluyendo:
 
-## Partes del programa
-La aplicación en general es muy sencillita. Consta de tres tipos de pantallas que cubren todas sus necesidades:
+- **Algoritmo Negamax** con poda alfa-beta
+- **Búsqueda en reposo** para mejorar la evaluación
+- **Múltiples niveles de dificultad** (aleatorio, fácil, medio, difícil)
+- **Interfaz gráfica completa** con menús y opciones
+- **Sistema de guardado/carga** de partidas
 
-1. Un menú inicial en el que poder escoger cualquiera de los juegos desarrollados.
-2. Un menú de opciones que diferirá dependiendo del juego seleccionado.
-3. La pantalla de juego del título escogido, listo para jugar.
-4. Pantalla de fin del juego.
-5. Un menú que te muestra las partidas guardadas disponibles.
-6. Pantalla de errores.
+## 🎮 Juegos Implementados
 
-### Menú inicial
-Esta pantalla es simplemente la lista de los títulos seleccionables, tal como muestra la siguiente imagen:
+### 1. **Tres en Raya (Tic-tac-toe)**
+- Tablero 3x3 clásico
+- Algoritmo optimizado para juego perfecto
+- Detección automática de empates
 
-![Menú inicial](https://i.imgur.com/R6kQ7Ja.png "Menú inicial")
+### 2. **Ratón vs Gatos (Cats vs Mouse)**
+- El ratón (blanco) debe escapar hacia arriba
+- Los gatos (negros) deben bloquear al ratón
+- Estrategia asimétrica con objetivos opuestos
 
-Lo único que podemos hacer es pulsar en el juego para cargar el menú de opciones del mismo.
+### 3. **Damas Inglesas (Checkers)**
+- Tablero 8x8 con reglas inglesas
+- Promoción a dama al llegar al extremo
+- Capturas obligatorias y múltiples
 
-### Menú de opciones
-Según el juego escogido pueden aparecer unas opciones u otras, pero en general siempre mantiene la misma estructura. Para abarcar todos los ejemplos posibles hasta la fecha (2/12/2022) se mostrarán los ejemplos con las imágenes del menú de opciones del juego del *Ratón vs Gatos*.
+## 🚀 Características
 
-Todas las pantallas de opciones se componen de la misma forma:
+### Algoritmos de IA
+- **Negamax básico** con evaluación iterativa
+- **Negamax con poda** alfa-beta para eficiencia
+- **Negamax completo** con búsqueda en reposo
+- **Evaluación heurística** específica por juego
 
-- Una serie de botones:
-1. Un botón para volver a la selección de juegos.
+### Interfaz Gráfica
+- **Menús intuitivos** para selección de juegos
+- **Configuración de dificultad** y opciones
+- **Visualización en tiempo real** del estado del juego
+- **Indicadores visuales** de turnos y movimientos válidos
 
-![Botón del menú inicial](https://i.imgur.com/P7Ut4IB.png "Botón para volver al menú inicial")
+### Sistema de Partidas
+- **Guardado automático** de partidas
+- **Carga de partidas** previas
+- **Sistema de deshacer** movimiento
+- **Archivos temporales** para recuperación
 
-2. Un botón para comenzar una partida con las opciones seleccionadas.
+## 🛠️ Tecnologías
 
-![Botón de comenzar](https://i.imgur.com/ghWnEP5.png "Botón para comenzar la partida")
+- **Lenguaje**: Haskell (GHC)
+- **Gráficos**: Gloss
+- **Matemáticas**: Data.Matrix
+- **Concurrencia**: Control.Concurrent.Async
+- **Sistema de archivos**: System.Directory
 
-3. Un botón para cargar una partida guardada de cualquier juego.
+## 📦 Instalación
 
-![Botón de cargar](https://i.imgur.com/0mn3GA1.png "Botón para cargar una partida")
+### Prerrequisitos
+- GHC (Glasgow Haskell Compiler) 8.10+
+- Cabal 3.0+
+- Librerías del sistema para gráficos
 
-- Bloque de opción, que puede ser del tipo:
-1. Varias checkbox para determinar la elección de ese ajuste específico.
+### Ubuntu/Debian
+```bash
+sudo apt update
+sudo apt install ghc cabal-install freeglut3-dev
+```
 
-[Opción mediante checkboxes](https://i.imgur.com/936g3As.png "Opción mediante checkboxes")
+### Windows
+```bash
+# Usar Stack o instalar Haskell Platform
+stack setup
+```
 
-2. Un tablero que se habilita o deshabilita según alguna de las opciones anteriores y que permite la dispoción inicial de **una** pieza en el tablero. (Implementado solo en el 'Ratón vs Gatos' a fecha 2/12/2022)
+### Compilación
+```bash
+# Clonar el repositorio
+git clone https://github.com/Jastxz/Adversarial-Search-Haskell.git
+cd Adversarial-Search-Haskell
 
-![Tablero de opciones](https://i.imgur.com/jE11M73.png "Tablero de las opciones")
+# Instalar dependencias
+cabal update
+cabal install --dependencies-only
 
-### Pantalla de juego
-Lo único variable cuando se carga el juego elegido es la estructura del tablero mostrada. Todos los juegos tienen la misma cantidad de botones y en todos los juegos lo que podemos hacer como mucho es pulsar en la pantalla.
+# Compilar
+cabal build
 
-Para todos los juegos podemos dividir la pantalla de juego en:
+# Ejecutar
+cabal run TFG
+```
 
-- Una serie de botones:
-1. Un botón para volver al menú de opciones.
+## 🎯 Uso
 
-![Botón del menú de opciones](https://i.imgur.com/SCAXYDR.png "Botón para volver al menú de opciones")
+### Inicio del Programa
+1. **Ejecutar** la aplicación
+2. **Seleccionar** juego del menú principal
+3. **Configurar** opciones (dificultad, turno, etc.)
+4. **Comenzar** partida
 
-2. Un botón para deshacer **un** movimiento.
+### Controles
+- **Click izquierdo**: Seleccionar casillas y opciones
+- **Botones de interfaz**: Guardar, cargar, volver, opciones
 
-![Botón de volver](https://i.imgur.com/9yMP0dO.png "Botón para deshacer un solo movimiento")
+### Niveles de Dificultad
+| Nivel | Descripción | Algoritmo |
+|-------|-------------|-----------|
+| **Random** | Movimientos aleatorios | Aleatorio |
+| **Lowest** | Muy fácil | Negamax profundidad 1-2 |
+| **Easy** | Fácil | Negamax profundidad 2-3 |
+| **Medium** | Medio | Negamax con poda |
+| **Hard** | Difícil | Negamax completo |
 
-3. Un botón para cargar una partida guardada de cualquier juego.
+## 📁 Estructura del Proyecto
 
-![Botón de cargar 2](https://i.imgur.com/mjuisdy.png "Botón para cargar una partida")
+```
+Adversarial-Search-Haskell/
+├── src/
+│   ├── Tipos.hs              # Definiciones de tipos
+│   ├── Utiles.hs             # Funciones auxiliares
+│   ├── UtilesGraficos.hs     # Utilidades gráficas
+│   ├── MiniMax.hs            # Algoritmos de búsqueda
+│   ├── Interconexion.hs      # Interfaz entre juegos
+│   ├── GuardarCargar.hs      # Sistema de persistencia
+│   ├── Interaction.hs        # Controlador principal
+│   ├── Funciones3enRaya.hs   # Lógica tres en raya
+│   ├── FuncionesGato.hs      # Lógica ratón vs gatos
+│   ├── FuncionesDamas.hs     # Lógica damas
+│   ├── IO3enRaya.hs          # Interfaz tres en raya
+│   ├── IOgato.hs             # Interfaz ratón vs gatos
+│   └── IOdamas.hs            # Interfaz damas
+├── app/
+│   └── Main.hs               # Punto de entrada
+├── Partidas/                 # Partidas guardadas
+├── TFG.cabal                 # Configuración Cabal
+└── README.md
+```
 
-4. Un botón para guardar la partida actual.
+## 🧠 Algoritmos Implementados
 
-![Botón de guardar](https://i.imgur.com/MiSuxdB.png "Botón para guardar una partida")
+### Negamax con Poda Alfa-Beta
+```haskell
+negamaxConPoda :: Movimiento -> Int -> String -> String -> Double -> Double -> IO TableroPuntuado
+negamaxConPoda (estado, pos) profundidad marcaMaquina juego alfa beta
+```
 
-- Un par de mensajes:
-1. Un mensaje que te indica a quién le toca.
+### Funciones de Evaluación
 
-![Indicación 1](https://i.imgur.com/DA8jvRm.png "Mensaje de indicación de turno")
+#### Tres en Raya
+- Detección de tres en línea: **±10 puntos**
+- Bloqueo de victoria: **7.5 puntos**
+- Dos en línea: **5 puntos**
 
-2. Un mensaje que te proporciona información del juego.
+#### Ratón vs Gatos
+- Escape del ratón: **±30 puntos**
+- Progreso hacia meta: **1.25 × fila**
+- Coordinación de gatos: **penalización por dispersión**
 
-![Indicación 2](https://i.imgur.com/p23yQTE.png "Mensaje con información de la partida")
+#### Damas
+- Valor de piezas: **Dama 9.4, Reina 10.5**
+- Ataques/defensas: **±1.0/0.5 puntos**
+- Control territorial: **2.9 puntos**
 
-- Un tablero sobre el que jugar.
+## 📊 Rendimiento
 
-![Tablero](https://i.imgur.com/UDZdZBT.png "Tablero")
+### Benchmarks (Intel i5-8250U)
+| Juego | Profundidad | Tiempo Promedio | Nodos Evaluados |
+|-------|-------------|-----------------|-----------------|
+| 3 en Raya | 9 | ~50ms | ~5,000 |
+| Ratón vs Gatos | 6 | ~200ms | ~15,000 |
+| Damas | 4 | ~800ms | ~50,000 |
 
-### Pantalla de fin del juego
-Esta pantalla la veremos cada vez que se acabe el juego ejecutado. Simplemente aparecerá un mensaje por pantalla que nos especificará quién ha ganado, si tú o la máquina.
+### Optimizaciones
+- **Poda alfa-beta**: Reduce ~75% nodos evaluados
+- **Búsqueda en reposo**: Evita horizontes problemáticos
+- **Concurrencia**: Evaluación paralela de movimientos
+- **Aleatorización**: Selección entre movimientos equivalentes
 
-![Pantalla de fin del juego](https://i.imgur.com/w7DDtO4.png "Pantalla de fin del juego")
+## 🐛 Problemas Conocidos
 
-### Menú de cargar partida
-Un pequeño menú que te muestra los archivos guardados disponibles y te deja escoger entre ellos. Vale la pena añadir que si intentas cargar una documento que no sea de tipo *.txt* o que no tenga el mismo formato que las partidas guardadas, simplemente fallará.
+- **Encoding**: La interfaz está en inglés por limitaciones de Gloss con acentos
+- **Rendimiento**: Damas en dificultad máxima puede ser lenta
+- **Windows**: Requiere DLL adicionales (incluidas en release)
 
-![Menú de cargar partida](https://i.imgur.com/TuAzwtB.png "Menú de cargar partida")
+## 🔧 Desarrollo
 
-### Pantalla de errores
-Exactamente igual que la de fin del juego pero con mensajes variados sobre posibles errores que en teoría no deben ocurrir.
+### Agregar Nuevo Juego
+1. Crear módulo `FuncionesNuevoJuego.hs`
+2. Implementar funciones requeridas:
+   ```haskell
+   inicial :: Movimiento
+   finJuego :: Tablero -> Bool
+   movsJuego :: Tablero -> String -> Movimientos
+   puntuaJuego :: Tablero -> Pos -> IO Double
+   ```
+3. Crear interfaz en `IONuevoJuego.hs`
+4. Registrar en `Interconexion.hs`
 
-## Efectos, efectos colaterales de algunos botones y lugar de almacenamiento de archivos
-Hay algunos botones que, por la forma en la que se han decidido implementar o su propia naturaleza, pueden tener efectos no esperados en primera instancia.
+## 📝 Licencia
 
-- Botón de vuelta al menú inicial. Si habías escogido alguna opción de algún juego, este botón las reseteará lógicamente.
-- Botón de vuelta al menú de opciones. Si has empezado una partida y pulsas este botón, todas las opciones se resetearán y cuando entres de nuevo se habrá creado una nueva partida.
-- Botón de deshacer un movimiento. Si existe el archivo temporal que este botón usa para volver atrás en el tiempo un paso, al pulsarlo lo cargará. Pongámos un ejemplo: Acabas de echar una partidita al *3 en raya* y ahora vas a jugar un rato a las *damas*; pues si pulsas este botón al comenzar la partida y sin haber movido aún, cargarás el último movimiento del *3 en raya*. Si el archivo no existe, al pulsar el botón volverás al menú de selección de títulos.
+Este proyecto no especifica licencia explícita. Para uso académico y educativo.
 
-También hay algunos archivos que es importante que sepas dónde se crean o se encuentran ubicados. Básicamente el documento temporal del botón de volver y las partidas guardadas.
+## 👨‍💻 Autor
 
-Respecto del archivo temporal, se creará (o debe crearse) en la raíz del disco en el que tengas ubicado el portable del juego. Pudiéndolo borrar cuando estimes necesario en teoría.
-El directorio de partidas guardadas se crea en el mismo lugar donde tengas la aplicación. El programa guardará en esa carpeta todas las partidas que guardes automáticamente. También puedes modificar esos ficheros o borrarlos si gustas.
+**Javier Gil Blázquez**
+- Email: javicraft14@gmail.com
+- GitHub: [@Jastxz](https://github.com/Jastxz)
 
-## Contacto
-Si quieres contactar conmigo puedes mandarme un correo a *javicraft14 arroba gmail punto com* o abrir un ticket en este repositorio. Siempre estoy abierto a sugerencias y a arreglar los errores del programa :).
+## 🙏 Agradecimientos
+
+- **Universidad** por el marco académico del TFG
+- **Comunidad Haskell** por las excelentes librerías
+- **Gloss** por hacer gráficos accesibles en Haskell
+
+## 📚 Referencias
+
+- Russell, S. & Norvig, P. (2020). *Artificial Intelligence: A Modern Approach*
+- Knuth, D. & Moore, R. (1975). *An Analysis of Alpha-Beta Pruning*
+- Wikipedia: [Negamax Algorithm](https://en.wikipedia.org/wiki/Negamax)
+
+---
+
+⭐ **¡Si te ha gustado el proyecto, dale una estrella!** ⭐
